@@ -33,8 +33,8 @@ void register_keywords() {
     keywords["next"] = TokenType::Next;
     keywords["dict"] = TokenType::Dict;
     keywords["end"] = TokenType::End;
-    keywords["true"] = TokenType::True;
-    keywords["false"] = TokenType::False;
+    keywords["True"] = TokenType::True;
+    keywords["False"] = TokenType::False;
     keywords["Nil"] = TokenType::Nil;
 
     keywords_registered = true;
