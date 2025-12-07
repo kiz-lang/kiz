@@ -15,6 +15,7 @@ namespace kiz {
 
 enum class AstType {
     // 表达式类型（对应 Expression 子类）
+    NilExpr, BoolExpr,
     StringExpr, NumberExpr, ListExpr, IdentifierExpr,
     BinaryExpr, UnaryExpr,
     CallExpr,
@@ -77,6 +78,21 @@ struct NumberExpr final :  Expression {
     }
 };
 
+// 空值字面量
+struct NilExpr final : Expression {
+    explicit NilExpr() {
+        this->ast_type = AstType::NilExpr;
+    }
+};
+
+// 布尔值字面量
+struct BoolExpr final : Expression {
+    bool val;
+    explicit BoolExpr(bool v) : val(v) {
+        this->ast_type = AstType::BoolExpr;
+    }
+}
+;
 // 数组字面量
 struct ListExpr final :  Expression {
     std::vector<std::unique_ptr<Expression>> elements;
