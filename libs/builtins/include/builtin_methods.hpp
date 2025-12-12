@@ -25,20 +25,30 @@ inline NativeFuncPtr rational_str;
 inline NativeFuncPtr rational_repr;
 
 inline NativeFuncPtr nil_eq;
+inline NativeFuncPtr nil_str;
+inline NativeFuncPtr nil_repr;
 
 inline NativeFuncPtr bool_eq;
+inline NativeFuncPtr bool_str;
+inline NativeFuncPtr bool_repr;
 
 inline NativeFuncPtr str_eq;
 inline NativeFuncPtr str_add;
 inline NativeFuncPtr str_contains;
+inline NativeFuncPtr str_str;
+inline NativeFuncPtr str_repr;
 
 inline NativeFuncPtr dict_eq;
 inline NativeFuncPtr dict_add;
 inline NativeFuncPtr dict_contains;
+inline NativeFuncPtr dict_str;
+inline NativeFuncPtr dict_repr;
 
 inline NativeFuncPtr list_eq;
 inline NativeFuncPtr list_add;
 inline NativeFuncPtr list_contains;
+inline NativeFuncPtr list_str;
+inline NativeFuncPtr list_repr;
 
 
 }
