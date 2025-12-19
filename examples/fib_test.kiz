@@ -8,5 +8,5 @@ fn fib(n)
 	end
 end
 
-print("fib(30)=", fib(30))
+print("fib(30) =", fib(30))
 print("using", now()-start, "ns")

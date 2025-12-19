@@ -1,6 +1,0 @@
-fn x()
-    x.y = 0
-end
-
-x()
-print(x.y)

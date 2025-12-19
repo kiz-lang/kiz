@@ -21,10 +21,9 @@ bool Vm::check_obj_is_true(model::Object* obj) {
 
 
 void Vm::call_function(model::Object* func_obj, model::Object* args_obj, model::Object* self=nullptr){
-    auto* args_list = dynamic_cast<model::List*>(args_obj);
-
     assert(func_obj != nullptr);
     assert(args_obj != nullptr);
+    auto* args_list = dynamic_cast<model::List*>(args_obj);
 
     if (!args_list) {
         func_obj->del_ref();  // 释放函数对象引用

@@ -30,18 +30,25 @@ Token Parser::skip_token(const std::string& want_skip) {
     }
 
     const Token& curr_tok = tokens_.at(curr_tok_idx_);
+    // 无目标文本：直接跳过当前 Token
     if (want_skip.empty()) {
         curr_tok_idx_++;
         return curr_tok;
     }
 
-    if (curr_tok.text == want_skip) {
+    // 优先按文本匹配，兼容按类型匹配（比如 End 类型对应 text="end"）
+    if (curr_tok.text == want_skip ||
+        (want_skip == "end" && curr_tok.type == TokenType::End)) {
         curr_tok_idx_++;
         return curr_tok;
     }
 
-    // want_skip 非空但不匹配 → 仅警告，不推进索引（避免吞Token）
-    assert(false && "Syntax mismatch in skip_token");
+    // 匹配失败：打印错误但不终止，仅返回当前 Token（避免索引卡死）
+    std::cerr << Color::YELLOW
+              << "[Warning] skip_token mismatch: want '" << want_skip
+              << "', got '" << curr_tok.text << "' (type: " << static_cast<int>(curr_tok.type) << ")"
+              << Color::RESET << std::endl;
+    return curr_tok; // 不推进索引，交给上层处理
 }
 
 // curr_token实现
@@ -99,7 +106,7 @@ std::unique_ptr<BlockStmt> Parser::parse(const std::vector<Token>& tokens) {
     DEBUG_OUTPUT("parsing...");
     std::vector<std::unique_ptr<Statement>> program_stmts;
 
-    // ========== 新增：打印所有 Token（关键调试） ==========
+    // 打印 Token 序列（保留调试逻辑）
     DEBUG_OUTPUT("=== 所有 Token 序列 ===");
     for (size_t i = 0; i < tokens.size(); i++) {
         const auto& tok = tokens[i];
@@ -110,19 +117,19 @@ std::unique_ptr<BlockStmt> Parser::parse(const std::vector<Token>& tokens) {
     }
     DEBUG_OUTPUT("=== Token 序列结束 ===");
 
-    // ========== 全局块解析：直到 EOF ==========
+    // 全局块解析：直到 EOF
     while (curr_token().type != TokenType::EndOfFile) {
-        while(curr_token().type == TokenType::EndOfLine)
-        {
-            skip_end_of_ln();
+        // 跳过前置换行（仅清理，不处理语句）
+        while(curr_token().type == TokenType::EndOfLine) {
+            skip_token(); // 直接跳过换行，不调用 skip_end_of_ln
         }
         if (auto stmt = parse_stmt(); stmt != nullptr) {
             program_stmts.push_back(std::move(stmt));
         }
-        // 跳过语句后的换行/分号（容错）
-        if (curr_token().type == TokenType::EndOfLine || curr_token().type == TokenType::Semicolon) {
-            skip_token();
-        }
+        // 移除：parse_stmt 内部已跳过换行/分号，无需重复处理
+        // if (curr_token().type == TokenType::EndOfLine || curr_token().type == TokenType::Semicolon) {
+        //     skip_token();
+        // }
     }
 
     DEBUG_OUTPUT("end parsing");

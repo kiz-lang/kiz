@@ -11,7 +11,7 @@
 
 namespace kiz {
 
-// 专门解析if/while的语句块（不以end结尾，以else/elif/end/EOF为终止）
+// 专门解析if的语句块（不以end结尾，以else/elif/end/EOF为终止）
 std::unique_ptr<BlockStmt> Parser::parse_if_block() {
     DEBUG_OUTPUT("parsing if block (no end)");
     std::vector<std::unique_ptr<Statement>> block_stmts;
@@ -39,7 +39,7 @@ std::unique_ptr<BlockStmt> Parser::parse_if_block() {
     return std::make_unique<BlockStmt>(std::move(block_stmts));
 }
 
-// 仅用于全局块、函数体等需要end结尾的块
+// 需要end结尾的块
 std::unique_ptr<BlockStmt> Parser::parse_block() {
     DEBUG_OUTPUT("parsing block (with end)");
     std::vector<std::unique_ptr<Statement>> block_stmts;
@@ -61,12 +61,15 @@ std::unique_ptr<BlockStmt> Parser::parse_block() {
             block_stmts.push_back(std::move(stmt));
         }
 
+        // 修复：同时跳过分号和换行（块内语句可能用换行分隔）
         if (curr_token().type == TokenType::Semicolon) {
             skip_token(";");
+        } else if (curr_token().type == TokenType::EndOfLine) {
+            skip_token(); // 直接跳过换行，无需指定文本
         }
     }
 
-    skip_token("end"); // 仅全局/函数块消耗end
+    skip_token("end"); // 现在能正确跳过 end Token
     return std::make_unique<BlockStmt>(std::move(block_stmts));
 }
 
@@ -122,13 +125,7 @@ std::unique_ptr<Statement> Parser::parse_stmt() {
         skip_token("while");
         // 解析循环条件表达式
         auto cond_expr = parse_expression();
-        if (!cond_expr) {
-            // std::cerr << Color::RED
-            //           << "[Syntax Error] While statement missing condition expression"
-            //           << Color::RESET << std::endl;
-            // assert(false && "Invalid while condition");
-        }
-        // 解析循环体（无大括号，用end结尾）
+        assert(cond_expr != nullptr);
         skip_start_of_block();
         auto while_block = parse_block();
         return std::make_unique<WhileStmt>(std::move(cond_expr), std::move(while_block));
