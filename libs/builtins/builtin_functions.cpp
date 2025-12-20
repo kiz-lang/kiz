@@ -41,8 +41,30 @@ model::Object* help(model::Object* self, const model::List* args) {
 };
 
 model::Object* breakpointer(model::Object* self, const model::List* args) {
-    // todo
-    return new model::Nil();
+    size_t i;
+    for (auto frame: kiz::Vm::call_stack_) {
+        std::cout << "Frame [" << i << "]" << frame.name << "\n";
+        std::cout << "=================================" << "\n";
+        std::cout << "Pc: " << frame.pc;
+        std::cout << "Locals: " << frame.locals.to_string() << "\n";
+        std::cout << "Names: ";
+        for (auto n: frame.names) {
+            std::cout << n << " | ";
+        }
+        std::cout << "Consts: ";
+        for (auto c: frame.consts) {
+            std::cout << c << " | ";
+        }
+        std::cout << "\n";
+        ++i;
+    }
+    std::cout << "continue to run? (Y/[N])"
+    std::string input;
+    std::getline(std::cin, input);
+    if (input == "Y") {
+        return new model::Nil();
+    }
+    throw KizStopRunningSign();
 };
 
 model::Object* range(model::Object* self, const model::List* args) {
