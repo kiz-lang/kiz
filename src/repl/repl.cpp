@@ -28,9 +28,15 @@ std::string Repl::read(const std::string& prompt) {
 void Repl::loop() {
     DEBUG_OUTPUT("start repl loop");
     while (is_running_) {
-        auto code = read(">>>");
-        add_to_history(code);
-        eval_and_print(code);
+        try {
+            auto code = read(">>>");
+            add_to_history(code);
+            eval_and_print(code);
+        } catch (KizStopRunningSigal& e) {
+            // todo
+        } catch (...) {
+            // todo
+        }
     }
 }
 
@@ -57,7 +63,7 @@ void Repl::eval_and_print(const std::string& cmd) {
     }
 
     DEBUG_OUTPUT("repl print");
-    auto [stack_top, locals] = vm_.get_vm_state();
+    auto stack_top = vm_.get_vm_state();
     if (stack_top != nullptr) {
         if (not dynamic_cast<model::Nil*>(stack_top) and should_print) {
             std::cout << stack_top->to_string() << std::endl;
