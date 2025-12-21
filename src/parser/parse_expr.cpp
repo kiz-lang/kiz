@@ -187,9 +187,6 @@ std::unique_ptr<Expression> Parser::parse_primary() {
         return std::make_unique<IdentifierExpr>(tok.text);
     }
     if (tok.type == TokenType::Func) {
-        // 读取函数名（必须是标识符）
-        const std::string func_name = skip_token().text;
-
         // 解析参数列表（()包裹，逻辑不变）
         std::vector<std::string> func_params;
         if (curr_token().type == TokenType::LParen) {
@@ -209,6 +206,7 @@ std::unique_ptr<Expression> Parser::parse_primary() {
         // 解析函数体（无大括号，用end结尾）
         skip_start_of_block();  // 跳过参数后的换行
         auto func_body = parse_block();  // 函数体为非全局作用域
+        skip_token("end");
         return std::make_unique<FnDeclExpr>("<lambda>", std::move(func_params),std::move(func_body));
     }
     if (tok.type == TokenType::Pipe) {
