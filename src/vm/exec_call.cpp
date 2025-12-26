@@ -80,7 +80,7 @@ void Vm::call_function(model::Object* func_obj, model::Object* args_obj, model::
         auto new_frame = std::make_unique<CallFrame>(
              func->name,
 
-             func->attrs,
+             func,   // owner
              deps::HashMap<model::Object*>(), // 初始空局部变量表
 
             0,                               // 程序计数器初始化为0（从第一条指令开始执行）
