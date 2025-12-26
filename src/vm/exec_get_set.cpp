@@ -48,7 +48,7 @@ void Vm::exec_LOAD_VAR(const Instruction& instruction) {
             op_stack_.push(builtin_val);
             return;
         }
-        if (auto owner_module_it = call_stack_.back()->attrs.find("__owner_module__")) {
+        if (auto owner_module_it = call_stack_.back()->owner->attrs.find("__owner_module__")) {
             auto owner_module = dynamic_cast<model::Module*>(owner_module_it->value);
             assert(owner_module != nullptr);
             auto var_it = owner_module->attrs.find(var_name);
