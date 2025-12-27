@@ -271,9 +271,9 @@ std::vector<Token> Lexer::tokenize(const std::string& src) {
             tokens.emplace_back(TokenType::Backslash, "\\", lineno, start_col);
             ++pos;
             ++col;
-        } else if (src[pos] == '/' && pos + 1 < src.size() && src[pos + 1] == '/') {
+        } else if (src[pos] == '#') {
             // Single line comment with //
-            size_t j = pos + 2;
+            size_t j = pos + 1;
             while (j < src.size() && src[j] != '\n') ++j;
             pos = j;
             continue;
