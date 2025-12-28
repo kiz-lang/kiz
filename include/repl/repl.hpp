@@ -30,9 +30,7 @@ class Repl {
     kiz::Vm vm_;
 
     void add_to_history(const std::string& cmd) {
-        if (!cmd.empty()) {
-            cmd_history_.emplace_back(cmd);
-        }
+        cmd_history_.emplace_back(cmd);
     }
 
     [[nodiscard]] static std::string trim(const std::string& str) {

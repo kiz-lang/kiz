@@ -29,7 +29,7 @@ std::string Repl::read(const std::string& prompt) {
     std::cout << Color::BRIGHT_MAGENTA << prompt << Color::RESET;
     std::cout.flush();
     std::getline(std::cin, result);
-    return trim(result);
+    return result;
 }
 
 void Repl::loop() {
