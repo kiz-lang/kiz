@@ -23,18 +23,24 @@ static bool keywords_registered = false;
 
 void register_keywords() {
     if (keywords_registered) return;
-    keywords["fn"] = TokenType::Func;
     keywords["if"] = TokenType::If;
     keywords["else"] = TokenType::Else;
     keywords["while"] = TokenType::While;
-    keywords["return"] = TokenType::Return;
-    keywords["import"] = TokenType::Import;
+    keywords["for"] = TokenType::For;
     keywords["break"] = TokenType::Break;
+    keywords["next"] = TokenType::Next;
+
+    keywords["try"] = TokenType::Try;
+    keywords["catch"] = TokenType::Catch;
+    keywords["import"] = TokenType::Import;
     keywords["nonlocal"] = TokenType::Nonlocal;
     keywords["global"] = TokenType::Global;
-    keywords["next"] = TokenType::Next;
-    keywords["dict"] = TokenType::Dict;
+
+    keywords["fn"] = TokenType::Func;
+    keywords["object"] = TokenType::Object;
+    keywords["return"] = TokenType::Return;
     keywords["end"] = TokenType::End;
+
     keywords["True"] = TokenType::True;
     keywords["False"] = TokenType::False;
     keywords["Nil"] = TokenType::Nil;
