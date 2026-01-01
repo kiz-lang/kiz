@@ -37,11 +37,11 @@ void Repl::loop() {
     while (is_running_) {
         try {
             auto code = read(">>>");
-            auto old_code_it = err::opened_files.find(file_path);
-            if (old_code_it != err::opened_files.end()) {
-                err::opened_files[file_path] = old_code_it->second + "\n" + code;
+            auto old_code_it = err::SrcManager::opened_files.find(file_path);
+            if (old_code_it != nullptr) {
+                err::SrcManager::opened_files.insert(file_path , old_code_it->value + "\n" + code);
             } else {
-                err::opened_files[file_path] = code;
+                err::SrcManager::opened_files.insert(file_path, code);
             }
 
             add_to_history(code);

@@ -71,7 +71,7 @@ void Parser::skip_end_of_ln() {
         return;
     }
     DEBUG_OUTPUT("curr_tok: " + curr_tok.text);
-    err::error_reporter(file_path, curr_tok.pos, {"SyntaxError", "Invalid statement terminator"});
+    err::error_reporter(file_path, curr_tok.pos, "SyntaxError", "Invalid statement terminator");
 }
 
 // skip_start_of_block实现 处理函数体前置换行

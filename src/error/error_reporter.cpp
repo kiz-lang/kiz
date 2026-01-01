@@ -36,13 +36,16 @@ void context_printer(
     size_t src_col_end = pos.col_end;
 
     // 获取错误行代码
-    std::string error_line = get_slice(src_path, src_line_start, src_line_end);
+    DEBUG_OUTPUT("getting line");
+    std::string error_line = SrcManager::get_slice(src_path, src_line_start, src_line_end);
+    DEBUG_OUTPUT(error_line);
     if (error_line.empty()) {
         error_line = "[Can't slice the source file with "
         + std::to_string(src_line_start) + "," + std::to_string(src_line_start)
         + "," + std::to_string(src_col_start) + "," + std::to_string(src_col_end) + "]";
     }
 
+    DEBUG_OUTPUT("making ^");
     // 计算箭头位置：行号前缀长度 + 列偏移（列从1开始）
     const std::string line_prefix = std::to_string(src_line_start) + " | ";
     const size_t caret_offset = line_prefix.size() + (src_col_start - 1);
@@ -60,11 +63,16 @@ void context_printer(
 }
 
 
-void error_reporter(const std::string& src_path, const PositionInfo& pos, const ErrorInfo& error) {
+void error_reporter(
+    const std::string& src_path,
+    const PositionInfo& pos,
+    const std::string& error_name,
+    const std::string& error_content
+) {
     context_printer(src_path, pos);
     // 错误信息（类型加粗红 + 内容白）
-    std::cout << Color::BOLD << Color::BRIGHT_RED << error.name
-              << Color::RESET << Color::WHITE << " : " << error.content
+    std::cout << Color::BOLD << Color::BRIGHT_RED << error_name
+              << Color::RESET << Color::WHITE << " : " << error_content
               << Color::RESET << std::endl;
     std::cout << std::endl;
 

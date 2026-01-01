@@ -104,7 +104,7 @@ void args_parser(const int argc, char* argv[]) {
         } else {
             std::string path = argv[1];
             DEBUG_OUTPUT("reading file at "+path);
-            const auto content = err::open_new_file(path);
+            const auto content = err::SrcManager::open_new_file(path);
             DEBUG_OUTPUT("file content is "+content);
             kiz::Lexer lexer(path);
             kiz::Parser parser(path);
@@ -127,7 +127,7 @@ void args_parser(const int argc, char* argv[]) {
         if (cmd == "run") {
             std::string path = argv[2];
             DEBUG_OUTPUT("reading file at "+path);
-            const auto content = err::open_new_file(path);
+            const auto content = err::SrcManager::open_new_file(path);
             DEBUG_OUTPUT("file content is "+content);
             kiz::Lexer lexer(path);
             kiz::Parser parser(path);

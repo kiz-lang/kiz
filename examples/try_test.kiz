@@ -1,10 +1,10 @@
 fn a ()
-    print("a()")
+    print("function a")
     throw Error("RuntimeError", "foo")
 end
 
 try
     a()
 catch e: Error
-    print(e.__name__, e.__info__)
+    print(e.h)
 end

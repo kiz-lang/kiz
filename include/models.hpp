@@ -66,7 +66,7 @@ public:
     enum class ObjectType {
         OT_Object, OT_Nil, OT_Bool, OT_Int, OT_Rational, OT_String,
         OT_List, OT_Dictionary, OT_CodeObject, OT_Function,
-        OT_CppFunction, OT_Module
+        OT_CppFunction, OT_Module, OT_Error
     };
 
     // 获取实际类型的虚函数
@@ -91,6 +91,10 @@ public:
 
     [[nodiscard]] virtual std::string to_string() const {
         return "<Object at " + ptr_to_string(this) + ">";
+    }
+
+    Object () {
+        make_ref();
     }
 
     virtual ~Object() {
@@ -334,6 +338,23 @@ public:
     }
     [[nodiscard]] std::string to_string() const override {
         return "Nil";
+    }
+};
+
+class Error : public Object {
+public:
+    std::vector<std::pair<std::string, err::PositionInfo>> positions;
+    static constexpr ObjectType TYPE = ObjectType::OT_Error;
+    [[nodiscard]] ObjectType get_type() const override { return TYPE; }
+
+    explicit Error(std::vector<std::pair<std::string, err::PositionInfo>> p) {
+        positions = std::move(p);
+        attrs.insert("__parent__", based_error);
+    }
+
+    explicit Error() {
+        positions = {};
+        attrs.insert("__parent__", based_error);
     }
 };
 

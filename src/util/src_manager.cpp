@@ -15,7 +15,6 @@
 #include <iterator>
 #include <mutex>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,8 +23,8 @@
 
 namespace err {
 
-// 全局互斥锁：保证多线程下对opened_files的安全访问
-inline std::mutex opened_files_mutex;
+dep::HashMap<std::string> SrcManager::opened_files;
+inline std::mutex opened_files_mutex; // 全局锁
 
 /**
  * @brief 从指定文件中提取指定行范围的内容（行号从1开始）
@@ -34,13 +33,15 @@ inline std::mutex opened_files_mutex;
  * @param src_line_end 结束行号（闭区间）
  * @return 提取的行内容（每行保留原始换行符，无效范围返回空字符串）
  */
-std::string get_slice(const std::string& src_path, const int& src_line_start, const int& src_line_end) {
+std::string SrcManager::get_slice(const std::string& src_path, const int& src_line_start, const int& src_line_end) {
+    DEBUG_OUTPUT("get slice");
     // 先获取完整文件内容（依赖缓存机制）
     std::string file_content = get_file_by_path(src_path);
     if (file_content.empty()) {
         return "";
     }
 
+    DEBUG_OUTPUT("try to slice");
     // 按行分割文件内容（兼容 Windows \r\n 和 Linux \n 换行符）
     std::vector<std::string> lines;
     std::stringstream content_stream(file_content);
@@ -84,20 +85,21 @@ std::string get_slice(const std::string& src_path, const int& src_line_start, co
  * @param path 文件路径
  * @return 文件完整内容（打开失败会抛出异常）
  */
-std::string get_file_by_path(const std::string& path) {
-    // 加锁保证多线程下缓存操作的原子性
-    std::lock_guard lock(opened_files_mutex);
-
+std::string SrcManager::get_file_by_path(std::string path) {
+    DEBUG_OUTPUT("get_file_by_path");
+    std::lock_guard lock(opened_files_mutex); // 加锁
     // 检查缓存是否已存在该文件
     auto iter = opened_files.find(path);
-    if (iter != opened_files.end()) {
-        return iter->second;
+    if (iter != nullptr) {
+        return iter->value;
     }
 
     // 缓存未命中，新打开文件并加入缓存
     std::string file_content = open_new_file(path);
-    opened_files.emplace(path, file_content);
-
+    DEBUG_OUTPUT(file_content);
+    DEBUG_OUTPUT(path+" "+file_content);
+    opened_files.insert(path, file_content);
+    DEBUG_OUTPUT("finish get_file_by_path");
     return file_content;
 }
 
@@ -106,28 +108,31 @@ std::string get_file_by_path(const std::string& path) {
  * @param path 文件路径
  * @return 文件完整内容（打开失败会抛出std::runtime_error）
  */
-std::string open_new_file(const std::string& path) {
-    // 以文本模式打开文件（自动处理换行符转换，避免二进制模式的乱码问题）
-    std::ifstream kiz_file(path, std::ios::in | std::ios::binary);
+std::string SrcManager::open_new_file(const std::string& path) {
+    DEBUG_OUTPUT("open_new_file: " + path);
+    std::ifstream kiz_file(path, std::ios::binary);
     if (!kiz_file.is_open()) {
-        throw KizStopRunningSignal("Failed to open kiz file: " + path +
-                                 " (reason: " + std::strerror(errno) + ")");
+        throw KizStopRunningSignal("Failed to open file: " + path);
     }
 
-    // 读取文件全部内容（高效读取方式，避免逐行读取的性能损耗）
-    std::string file_content;
-    // 调整流缓冲区大小以优化大文件读取
     kiz_file.seekg(0, std::ios::end);
-    file_content.reserve(kiz_file.tellg());
+    const std::streampos file_size = kiz_file.tellg();
+    if (file_size < 0) {
+        throw KizStopRunningSignal("Failed to get file size: " + path);
+    }
+
+    std::string file_content;
+    file_content.resize(file_size);
+
     kiz_file.seekg(0, std::ios::beg);
+    kiz_file.read(&file_content[0], file_size);
 
-    // 用迭代器读取全部字符（兼容空文件场景）
-    file_content.assign(std::istreambuf_iterator<char>(kiz_file),
-                        std::istreambuf_iterator<char>());
+    if (!kiz_file) {
+        throw KizStopRunningSignal("Failed to read file: " + path);
+    }
 
-    // 关闭文件（ifstream析构时会自动关闭，显式关闭更严谨）
-    kiz_file.close();
-
+    DEBUG_OUTPUT("File read successfully, size: " + std::to_string(file_size));
+    DEBUG_OUTPUT(file_content);
     return file_content;
 }
 

@@ -23,7 +23,7 @@ void Vm::exec_MAKE_LIST(const Instruction& instruction) {
                         "个，实际" + std::to_string(op_stack.size()) + "个）").c_str());
     }
 
-    // 步骤1：弹出栈顶 elem_count 个元素（栈是LIFO，弹出顺序是 argN → arg2 → arg1）
+    // 弹出栈顶 elem_count 个元素（栈是LIFO，弹出顺序是 argN → arg2 → arg1）
     std::vector<model::Object*> elem_list;
     elem_list.reserve(elem_count);  // 预分配空间，避免扩容
     for (size_t i = 0; i < elem_count; ++i) {
@@ -40,10 +40,10 @@ void Vm::exec_MAKE_LIST(const Instruction& instruction) {
         elem_list.push_back(elem);
     }
 
-    // 步骤2：反转元素顺序（恢复原参数顺序：arg1 → arg2 → ... → argN）
+    // 反转元素顺序（恢复原参数顺序：arg1 → arg2 → ... → argN）
     std::reverse(elem_list.begin(), elem_list.end());
 
-    // 步骤3：创建 List 对象，压入栈
+    // 创建 List 对象，压入栈
     auto* list_obj = new model::List(elem_list);
     list_obj->make_ref();  // List 自身引用计std::to_stringstd::to_string((数+1
     op_stack.push(list_obj);
@@ -61,7 +61,10 @@ void Vm::exec_TRY_END(const Instruction& instruction) {
 
     const size_t end_catch_pc = instruction.opn_list[0];
     call_stack.back()->pc = end_catch_pc;
+}
 
+void Vm::exec_CLEAN_ERROR(const Instruction& instruction) {
+    curr_error = nullptr;
 }
 
 void Vm::exec_IMPORT(const Instruction& instruction) {
@@ -72,9 +75,17 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
 }
 
 void Vm::exec_LOAD_ERROR(const Instruction& instruction) {
-    const auto err = curr_error;
-    op_stack.push(err);
+    DEBUG_OUTPUT("loading curr error" + curr_error->to_string());
+    op_stack.push(curr_error);
 }
+
+void Vm::exec_SET_ERROR(const Instruction& instruction) {
+    auto a = op_stack.top();
+    op_stack.pop();
+    auto a_err = dynamic_cast<model::Error*>(a);
+    curr_error = a_err;
+}
+
 
 void Vm::exec_IS_INSTANCE(const Instruction& instruction) {
     auto [a, b] = fetch_two_from_stack_top("is instance");

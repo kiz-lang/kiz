@@ -360,10 +360,9 @@ std::vector<Token> Lexer::tokenize(const std::string& src, size_t lineno_start) 
             }
         } else {
             err::error_reporter(file_path, {lineno, lineno,
-                start_col, start_col},{
+                start_col, start_col},
                 "SyntaxError",
                 "Unknown character '"+std::string(1, src[pos]) + "'"
-            }
             );
         }
     }

@@ -21,17 +21,13 @@ struct PositionInfo {
     size_t col_end;
 };
 
-struct ErrorInfo {
-    const std::string name;
-    const std::string content;
-};
-
 std::string generate_separator(int col_start, int col_end, int line_end);
 
 void error_reporter(
     const std::string& src_path,
     const PositionInfo& pos,
-    const ErrorInfo& error
+    const std::string& error_name,
+    const std::string& error_content
 );
 
 

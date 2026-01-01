@@ -2,3 +2,7 @@ a = [1,2,3]
 for item : a
     print(str(item))
 end
+
+for item : a
+    print(str(item))
+end

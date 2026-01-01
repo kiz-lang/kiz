@@ -53,7 +53,12 @@ void Vm::exec_LOAD_VAR(const Instruction& instruction) {
             auto owner_module = dynamic_cast<model::Module*>(owner_module_it->value);
             assert(owner_module != nullptr);
             auto var_it = owner_module->attrs.find(var_name);
-
+            if (var_it) {
+                model::Object* var_val = var_it->value;
+                var_val->make_ref();
+                op_stack.push(var_val);
+                return;
+            }
         }
         else native_fn_throw("NameError", "Undefined variable '"+var_name+"'");
     }

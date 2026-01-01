@@ -28,7 +28,18 @@ std::stack<model::Object*> Vm::op_stack{};
 std::vector<std::shared_ptr<CallFrame>> Vm::call_stack{};
 bool Vm::running = false;
 std::string Vm::file_path;
-model::Object* Vm::curr_error;
+model::Error* Vm::curr_error {};
+
+std::pair<std::string, std::string> get_err_name_and_msg(const model::Object* err_obj) {
+    assert(err_obj != nullptr);
+    auto err_name_it = err_obj->attrs.find("__name__");
+    auto err_msg_it = err_obj->attrs.find("__msg__");
+    assert(err_name_it != nullptr);
+    assert(err_msg_it != nullptr);
+    auto err_name = err_name_it->value->to_string();
+    auto err_msg = err_msg_it->value->to_string();
+    return {err_name, err_msg};
+}
 
 Vm::Vm(const std::string& file_path_) {
     file_path = file_path_;
@@ -131,15 +142,13 @@ Vm::Vm(const std::string& file_path_) {
     model::based_str->attrs.insert("__bool__", new model::CppFunction(model::str_bool));
     model::based_str->attrs.insert("contains", new model::CppFunction(model::str_contains));
 
-    model::based_error->attrs.insert("__call__", new model::CppFunction([](model::Object* self, model::List* args) -> model::Object*
-    {   assert( args->val.size() == 2);
+    model::based_error->attrs.insert("__call__", new model::CppFunction([](model::Object* self, model::List* args) -> model::Object* {   assert( args->val.size() == 2);
         auto err_name = args->val[0];
-        auto err_info = args->val[1];
+        auto err_msg = args->val[1];
 
-        auto err = new model::Object();
-        err->attrs.insert("__parent__", self);
+        auto err = new model::Error();
         err->attrs.insert("__name__", err_name);
-        err->attrs.insert("__info__", err_info);
+        err->attrs.insert("__msg__", err_msg);
         return err;
     }));
 
@@ -272,19 +281,50 @@ model::Object* Vm::get_stack_top() {
     return stack_top;
 }
 
+std::vector<std::pair<std::string, err::PositionInfo>> Vm::gen_positions() {
+    size_t i = 0;
+    std::vector<std::pair<std::string, err::PositionInfo>> positions;
+    std::string path;
+    for (const auto& frame: call_stack) {
+        if (const auto m = dynamic_cast<model::Module*>(frame->owner)) {
+            path = m->name;
+        }
+        err::PositionInfo pos {};
+        if (i == call_stack.size() - 1) {
+            pos = frame->code_object->code.at(frame->pc).pos;
+        } else {
+            pos = frame->code_object->code.at(frame->pc - 1).pos;
+        }
+        positions.emplace_back(path, pos);
+        ++i;
+    }
+    return positions;
+}
+
 void Vm::native_fn_throw(const std::string& name, const std::string& content) {
     const auto err_name = new model::String(name);
-    const auto err_info = new model::String(content);
+    const auto err_msg = new model::String(content);
 
-    const auto err_obj = new model::Object();
-    err_obj->attrs.insert("__parent__", model::based_error);
+    const auto err_obj = new model::Error();
+    err_obj->positions = gen_positions();
     err_obj->attrs.insert("__name__", err_name);
-    err_obj->attrs.insert("__info__", err_info);
+    err_obj->attrs.insert("__msg__", err_msg);
+    DEBUG_OUTPUT("err_obj pos size = "+std::to_string(err_obj->positions.size()));;
     throw_error(err_obj);
 }
 
-void Vm::throw_error(model::Object* error) {
-    curr_error = error;
+void Vm::throw_error(model::Object* err) {
+    const auto error = dynamic_cast<model::Error*>(err);
+    assert(error != nullptr);
+    if (! curr_error) {
+        DEBUG_OUTPUT("setting curr err");
+        curr_error = error;
+        curr_error->positions = (error->positions.size() == 0)
+            ? gen_positions()
+            : error->positions;
+        DEBUG_OUTPUT("curr err: "+curr_error->to_string());
+        DEBUG_OUTPUT("curr err pos size: "+std::to_string(curr_error->positions.size()));
+    }
 
     size_t frames_to_pop = 0;
     CallFrame* target_frame = nullptr;
@@ -318,38 +358,22 @@ void Vm::throw_error(model::Object* error) {
         return;
     }
 
-    auto error_name_it = error->attrs.find("__name__");
-    auto err_content_it = error->attrs.find("__info__");
-    assert(error_name_it != nullptr);
-    assert(err_content_it != nullptr);
-    auto error_name = error_name_it->value->to_string();
-    auto error_content = err_content_it->value->to_string();
-
-    std::string path;
+    auto [error_name, error_msg] = get_err_name_and_msg(curr_error);
 
     // 报错
     std::cout << Color::BRIGHT_RED << "\nTrace Back: " << Color::RESET << std::endl;
-    size_t i = 0;
-    for (auto& frame: call_stack) {
-        // 获取模块路径
-        if (const auto m = dynamic_cast<model::Module*>(frame->owner)) {
-            path = m->name;
-        }
-
-        err::PositionInfo pos{};
-        if (i == call_stack.size() - 1) {
-            pos = frame->code_object->code.at(frame->pc).pos;
-        } else {
-            pos = frame->code_object->code.at(frame->pc-1).pos;
-        }
-
-        err::context_printer(path, pos);
-        ++i;
+    DEBUG_OUTPUT("curr err pos size: "+std::to_string(curr_error->positions.size()));
+    for (auto& [_path, _pos]: curr_error->positions ) {
+        DEBUG_OUTPUT(_path + " " + std::to_string(_pos.lno_start) + " "
+            + std::to_string(_pos.lno_end) + " " + std::to_string(_pos.col_start) + " " + std::to_string(_pos.col_end));
+        err::context_printer(_path, _pos);
     }
+
+    DEBUG_OUTPUT(error_name+" "+error_msg);
 
     // 错误信息（类型加粗红 + 内容白）
     std::cout << Color::BOLD << Color::BRIGHT_RED << error_name
-              << Color::RESET << Color::WHITE << " : " << error_content
+              << Color::RESET << Color::WHITE << " : " << error_msg
               << Color::RESET << std::endl;
     std::cout << std::endl;
 
@@ -388,6 +412,8 @@ void Vm::execute_instruction(const Instruction& instruction) {
         case Opcode::TRY_END:         exec_TRY_END(instruction);       break;
         case Opcode::IMPORT:          exec_IMPORT(instruction);        break;
         case Opcode::LOAD_ERROR:      exec_LOAD_ERROR(instruction);    break;
+        case Opcode::CLEAN_ERROR:     exec_CLEAN_ERROR(instruction);   break;
+        case Opcode::SET_ERROR:       exec_SET_ERROR(instruction);     break;
         case Opcode::SET_NONLOCAL:    exec_SET_NONLOCAL(instruction);  break;
         case Opcode::JUMP:            exec_JUMP(instruction);          break;
         case Opcode::JUMP_IF_FALSE:   exec_JUMP_IF_FALSE(instruction); break;
@@ -395,7 +421,7 @@ void Vm::execute_instruction(const Instruction& instruction) {
         case Opcode::POP_TOP:         exec_POP_TOP(instruction);       break;
         case Opcode::SWAP:            exec_SWAP(instruction);          break;
         case Opcode::COPY_TOP:        exec_COPY_TOP(instruction);      break;
-        case Opcode::IS_INSTANCE:     exec_IS_INSTANCE(instruction);      break;
+        case Opcode::IS_INSTANCE:     exec_IS_INSTANCE(instruction);   break;
         case Opcode::STOP:            exec_STOP(instruction);          break;
         default:                      assert(false && "execute_instruction: 未知 opcode");
     }

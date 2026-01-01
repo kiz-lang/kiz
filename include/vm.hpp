@@ -7,6 +7,8 @@
  */
 #pragma once
 
+#include <cassert>
+
 #include "../deps/hashmap.hpp"
 
 #include <stack>
@@ -17,9 +19,13 @@
 #include "error/error_reporter.hpp"
 
 namespace model {
-class Object;
+class Error;
+}
+
+namespace model {
 class Module;
 class CodeObject;
+class Object;
 }
 
 namespace kiz {
@@ -36,6 +42,8 @@ struct Instruction {
 struct TryBlockInfo {
     size_t catch_start = 0;
 };
+
+std::pair<std::string, std::string> get_err_name_and_msg(const model::Object* err_obj);
 
 struct CallFrame {
     std::string name;
@@ -62,7 +70,7 @@ public:
     static bool running;
     static std::string file_path;
 
-    static model::Object* curr_error;
+    static model::Error* curr_error;
 
     explicit Vm(const std::string& file_path_);
 
@@ -85,6 +93,7 @@ public:
     static void call_function(model::Object* func_obj, model::Object* args_obj, model::Object* self);
 
     static void native_fn_throw(const std::string& name, const std::string& content);
+    static std::vector<std::pair<std::string, err::PositionInfo>> gen_positions();
 
 private:
     static void exec_ADD(const Instruction& instruction);
@@ -117,6 +126,8 @@ private:
     static void exec_TRY_START(const Instruction& instruction);
     static void exec_IMPORT(const Instruction& instruction);
     static void exec_LOAD_ERROR(const Instruction& instruction);
+    static void exec_CLEAN_ERROR(const Instruction& instruction);
+    static void exec_SET_ERROR(const Instruction& instruction);
     static void exec_JUMP(const Instruction& instruction);
     static void exec_JUMP_IF_FALSE(const Instruction& instruction);
     static void exec_THROW(const Instruction& instruction);
