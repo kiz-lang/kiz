@@ -1,6 +1,7 @@
 #include <cassert>
 #include <fstream>
 
+#include "../kiz.hpp"
 #include "../models/models.hpp"
 #include "vm.hpp"
 #include "builtins/include/builtin_functions.hpp"
@@ -60,7 +61,7 @@ fs::path get_exe_abs_path() {
     char buf[PATH_MAX] = {0};
     ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX - 1);
     if (len == -1) {
-        throw kiz::NativeFuncError("PathError", "Linux readlink /proc/self/exe failed");
+        throw NativeFuncError("PathError", "Linux readlink /proc/self/exe failed");
     }
     exe_path = std::string(buf, len);
 #elif defined(__APPLE__)

@@ -1,6 +1,5 @@
 #include <iosfwd>
 #include <string>
-#include <windows.h>
 #include <chrono>
 #include <istream>
 #include "kiz.hpp"
