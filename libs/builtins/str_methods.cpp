@@ -152,9 +152,9 @@ Object* str_count(Object* self, const List* args) {
     auto self_str = cast_to_str(self);
 
     for (const auto& c : dep::UTF8String(self_str->val)) {
-        kiz::Vm::call_function(kiz::Vm::get_attr(obj, "__eq__"), new List({
+        kiz::Vm::call_method(obj, "__eq__", new List({
             create_str(c.to_string())
-        }), obj);
+        }));
         auto res = kiz::Vm::fetch_one_from_stack_top();
         if (res) {
             ++ count;

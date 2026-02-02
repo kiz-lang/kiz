@@ -6,17 +6,14 @@
 namespace kiz {
 
 model::Object* Vm::get_attr(const model::Object* obj, const std::string& attr_name) {
-    if (obj == nullptr) assert(false && ("GET_ATTR: 对象无此属性: "+attr_name).c_str());
-    DEBUG_OUTPUT("finding attr it");
+    assert(obj != nullptr);
     const auto attr_it = obj->attrs.find(attr_name);
     auto parent_it = obj->attrs.find("__parent__");
     if (attr_it) {
-        DEBUG_OUTPUT("found attr it");
         return attr_it->value;
     }
 
     if (parent_it) {
-        DEBUG_OUTPUT("try to find it from parent");
         return get_attr(parent_it->value, attr_name);
     }
     

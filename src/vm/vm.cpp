@@ -26,6 +26,7 @@ dep::HashMap<model::Module*> Vm::loaded_modules{};
 model::Module* Vm::main_module;
 std::stack<model::Object*> Vm::op_stack{};
 std::vector<std::shared_ptr<CallFrame>> Vm::call_stack{};
+model::Object Vm::small_int_pool[200] {};
 bool Vm::running = false;
 std::string Vm::file_path;
 model::Object* Vm::curr_error {};
@@ -35,6 +36,9 @@ dep::HashMap<model::Object*> Vm::std_modules {};
 Vm::Vm(const std::string& file_path_) {
     file_path = file_path_;
     DEBUG_OUTPUT("entry builtin functions...");
+    // for (dep::BigInt i = 0; i < 199; i+= 1) {
+    //     small_int_pool[i.to_unsigned_long_long()] = model::Int{i}
+    // }
     entry_builtins();
     entry_std_modules();
 }
@@ -199,18 +203,11 @@ void Vm::execute_instruction(const Instruction& instruction) {
 
 std::string Vm::obj_to_str(model::Object* for_cast_obj) {
     DEBUG_OUTPUT("obj to str");
-    model::Object* method;
     try {
-        method = get_attr(for_cast_obj, "__str__");
+        call_method(for_cast_obj, "__str__", model::create_list({}));
     } catch (NativeFuncError& e) {
-        try {
-            method = get_attr(for_cast_obj, "__dstr__");
-        } catch (NativeFuncError& e2) {
-            method = get_attr(model::based_obj, "__str__");
-        }
+        call_method(for_cast_obj, "__dstr__", model::create_list({}));
     }
-    assert(method != nullptr);
-    call_function(method, model::create_list({}), for_cast_obj);
     auto res = fetch_one_from_stack_top();
     std::string val = model::cast_to_str(res)->val;
     return val;
@@ -219,18 +216,11 @@ std::string Vm::obj_to_str(model::Object* for_cast_obj) {
 
 std::string Vm::obj_to_debug_str(model::Object* for_cast_obj) {
     DEBUG_OUTPUT("obj to debug str");
-    model::Object* method;
     try {
-        method = get_attr(for_cast_obj, "__dstr__");
+       call_method(for_cast_obj, "__dstr__", model::create_list({}));
     } catch (NativeFuncError& e) {
-        try {
-            method = get_attr(for_cast_obj, "__str__");
-        } catch (NativeFuncError& e2) {
-            method = get_attr(model::based_obj, "__str__"); // 兜底
-        }
+       call_method(for_cast_obj, "__str__", model::create_list({}));
     }
-    assert(method != nullptr);
-    call_function(method, model::create_list({}), for_cast_obj);
     auto res = fetch_one_from_stack_top();
     std::string val = model::cast_to_str(res)->val;
     return val;

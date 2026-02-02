@@ -15,7 +15,7 @@ bool Vm::is_true(model::Object* obj) {
         return false;
     }
 
-    call_function(get_attr(obj, "__bool__"), new model::List({}), obj);
+    call_method(obj, "__bool__", new model::List({}));
     auto result = fetch_one_from_stack_top();
     return is_true(result);
 }
@@ -170,6 +170,29 @@ void Vm::call_function(model::Object* func_obj, model::Object* args_obj, model::
             }
 
     }
+}
+
+void Vm::call_method(model::Object* obj, const std::string& attr_name, model::List* args) {
+    assert(obj != nullptr);
+    auto parent_it = obj->attrs.find("__parent__");
+    std::vector<std::string> magic_methods = {
+        "__add__", "__sub__", "__mul__", "__div__", "__pow__", "__pow__",
+        "__neg__", "__eq__", "__gt__", "__lt__", "__str__", "__dstr__",
+        "__bool__", "__getitem__", "__setitem__", "contains", "__next__", "__hash__"
+    };
+    const bool attr_is_magic = std::ranges::find(magic_methods, attr_name) != magic_methods.end();
+    if (!attr_is_magic or obj == model::based_obj) {
+        call_function(get_attr(obj, attr_name), args, obj);
+        return;
+    }
+
+    if (parent_it) {
+        call_function(get_attr(parent_it->value, attr_name), args, obj);
+        return;
+    }
+    throw NativeFuncError("NameError",
+        "Undefined method '" + attr_name + "'" + " of " + obj->debug_string()
+    );
 }
 
 // -------------------------- 函数调用/返回 --------------------------

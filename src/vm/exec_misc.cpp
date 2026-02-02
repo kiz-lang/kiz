@@ -85,7 +85,7 @@ void Vm::exec_MAKE_DICT(const Instruction& instruction) {
         key->make_ref(); // 增加引用计数
 
         // 调用 __hash__ 方法获取哈希值
-        call_function(get_attr(key, "__hash__"), new model::List({}), key);
+        call_method(key, "__hash__", new model::List({}));
         model::Object* hash_obj = fetch_one_from_stack_top();
 
         // 检查哈希值类型

@@ -224,11 +224,11 @@ void IRGenerator::gen_expr(Expr* expr) {
             break;
         }
         case AstType::NilExpr : {
-            const auto nil = new model::Nil();
+            const auto nil = model::load_nil();
             const size_t nil_idx = get_or_add_const(curr_consts, nil);
             curr_code_list.emplace_back(
                 Opcode::LOAD_CONST,
-                std::vector<size_t>{nil_idx},
+                std::vector{nil_idx},
                 expr->pos
             );
             break;
@@ -236,11 +236,11 @@ void IRGenerator::gen_expr(Expr* expr) {
         case AstType::BoolExpr : {
             const auto bool_ast = dynamic_cast<BoolExpr*>(expr);
             assert(bool_ast!=nullptr);
-            const auto bool_obj = new model::Bool(bool_ast->val);
+            const auto bool_obj = model::load_bool(bool_ast->val);
             const size_t bool_idx = get_or_add_const(curr_consts, bool_obj);
             curr_code_list.emplace_back(
                 Opcode::LOAD_CONST,
-                std::vector<size_t>{bool_idx},
+                std::vector{bool_idx},
                 expr->pos
             );
             break;

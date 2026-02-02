@@ -26,6 +26,7 @@ namespace model {
 class Module;
 class CodeObject;
 class Object;
+class List;
 }
 
 namespace kiz {
@@ -65,6 +66,7 @@ public:
 
     static std::stack<model::Object*> op_stack;
     static std::vector<std::shared_ptr<CallFrame>> call_stack;
+    static model::Object small_int_pool[200];
 
     static dep::HashMap<model::Object*> builtins;
 
@@ -103,6 +105,8 @@ public:
 
     /// 如果新增了调用栈，执行循环仅处理新增的模块栈帧（call_stack.size() > old_stack_size），不影响原有调用栈
     static void call_function(model::Object* func_obj, model::Object* args_obj, model::Object* self);
+    /// 运算符与普通方法分规则查找
+    static void call_method(model::Object* obj, const std::string& attr_name, model::List* args);
 
 private:
     /// 如果用户函数则创建调用栈，如果内置函数则执行并压上返回值

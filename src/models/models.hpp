@@ -39,7 +39,7 @@ namespace magic_name {
     constexpr auto debug_str = "__dstr__";
     constexpr auto getitem = "__getitem__";
     constexpr auto setitem = "__setitem__";
-    constexpr auto contains = "__contains__";
+    constexpr auto contains = "contains";
     constexpr auto next_item = "__next__";
     constexpr auto hash = "__hash__";
     constexpr auto owner_module = "__owner_module__";
