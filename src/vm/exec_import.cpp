@@ -74,7 +74,7 @@ fs::path get_exe_abs_path() {
         std::string big_buf(buf_len, '\0');
         ret = _NSGetExecutablePath(big_buf.data(), &buf_len);
         if (ret != 0) {
-            throw kiz::NativeFuncError("PathError", "macOS _NSGetExecutablePath failed");
+            throw NativeFuncError("PathError", "macOS _NSGetExecutablePath failed");
         }
         exe_path = big_buf;
     } else {
@@ -83,7 +83,7 @@ fs::path get_exe_abs_path() {
     // macOS需将相对路径转换为绝对路径
     exe_path = fs::absolute(exe_path);
 #else
-    throw kiz::KizStopRunningSignal("Unsupported platform");
+    throw KizStopRunningSignal("Unsupported platform");
 #endif
 
     // 确保返回绝对路径（跨平台兜底）
