@@ -116,6 +116,13 @@ else()
     set_target_properties(kiz PROPERTIES SUFFIX ".elf")
 endif()
 
+# Xlib
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    find_package(X11 REQUIRED)
+    target_include_directories(kiz PRIVATE ${X11_INCLUDE_DIR})
+    target_link_libraries(kiz ${X11_LIBRARIES})
+endif()
+
 # ===================== 编译信息打印 =====================
 list(LENGTH ALL_SRC_FILES TOTAL_SRC_COUNT)
 list(LENGTH SRC_FILES SRC_DIR_COUNT)
