@@ -25,9 +25,8 @@
 
 #include <stdbool.h>
 
-namespace ui {
 
-bool if_pressing_shift() {
+bool ui::if_pressing_shift() {
 
 #ifdef _WIN32
     // Windows 原逻辑保留
