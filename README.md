@@ -1,6 +1,6 @@
 <image src="https://pub-141831e61e69445289222976a15b6fb3.r2.dev/Image_to_url_V2/HEIF---imagetourl.cloud-1770101835669-relrd5.jpeg">
 
-# Kiz-lang v0.5.0
+<div style="text-align:center"><h1> kiz v0.5.0 🎉</h1></div>
 📌 **现状: 开发中...**
 
 ## 语言核心定位
