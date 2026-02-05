@@ -212,6 +212,7 @@ void Vm::exec_GET_ATTR(const Instruction& instruction) {
     model::Object* attr_val = get_attr(obj, attr_name);
     DEBUG_OUTPUT("attr val: " + attr_val->debug_string());
     push_to_stack(attr_val);
+    obj->del_ref();
 }
 
 void Vm::exec_SET_ATTR(const Instruction& instruction) {
@@ -241,6 +242,7 @@ void Vm::exec_SET_ATTR(const Instruction& instruction) {
     obj->attrs.insert(attr_name, attr_val);
     // ==| IMPORTANT |==
     attr_val->del_ref();
+    obj->del_ref();
 }
 
 void Vm::exec_GET_ITEM(const Instruction& instruction) {
@@ -251,6 +253,7 @@ void Vm::exec_GET_ITEM(const Instruction& instruction) {
     handle_call(get_attr(obj, "__getitem__"), args_list, obj);
     // ==| IMPORTANT |==
     args_list->del_ref(); // 修复：释放使用后的args_list
+    obj->del_ref();
 }
 
 void Vm::exec_SET_ITEM(const Instruction& instruction) {
@@ -272,6 +275,9 @@ void Vm::exec_SET_ITEM(const Instruction& instruction) {
     // ==| IMPORTANT |==
     setitem_method->del_ref();
     args_list->del_ref();
+    value->del_ref();
+    arg->del_ref();
+    obj->del_ref();
 }
 
 }

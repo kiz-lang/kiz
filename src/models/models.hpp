@@ -103,10 +103,10 @@ public:
     Object () {}
 
     virtual ~Object() {
-        auto kv_list = attrs.to_vector();
-        for (auto& obj : kv_list | std::views::values) {
-            if (obj) obj->del_ref();
-        }
+        // auto kv_list = attrs.to_vector();
+        // for (auto& obj : kv_list | std::views::values) {
+        //     if (obj) obj->del_ref();
+        // }
     }
 };
 
@@ -163,6 +163,10 @@ public:
     [[nodiscard]] std::string debug_string() const override {
         return "<Module: path='" + path + "', attr=" + attrs.to_string() + ", at " + ptr_to_string(this) + ">";
     }
+
+    ~Module() override {
+        code->del_ref();
+    }
 };
 
 class Function : public Object {
@@ -183,6 +187,10 @@ public:
 
     [[nodiscard]] std::string debug_string() const override {
         return "<Function: path='" + name + "', argc=" + std::to_string(argc) + " at " + ptr_to_string(this) + ">";
+    }
+
+    ~Function() override {
+        code->del_ref();
     }
 };
 
@@ -234,7 +242,9 @@ public:
 
     explicit List(std::vector<Object*> val) : val(std::move(val)) {
         attrs.insert("__parent__", based_list);
-        attrs.insert("__current_index__", new Int(0));
+        auto zero = new Int(0);
+        zero->make_ref();
+        attrs.insert("__current_index__", zero);
     }
     [[nodiscard]] std::string debug_string() const override {
         std::string result = "[";
@@ -250,6 +260,12 @@ public:
         }
         result += "]";
         return result;
+    }
+
+    ~List() override {
+        for (auto elem : val) {
+            if (elem) elem->del_ref();
+        }
     }
 };
 
@@ -275,7 +291,9 @@ public:
 
     explicit String(std::string val) : val(std::move(val)) {
         attrs.insert("__parent__", based_str);
-        attrs.insert("__current_index__", new Int(0));
+        auto zero = new Int(0);
+        zero->make_ref();
+        attrs.insert("__current_index__", zero);
     }
     [[nodiscard]] std::string debug_string() const override {
         return '"'+val+'"';
@@ -308,6 +326,14 @@ public:
         }
         result += "}";
         return result;
+    }
+
+    ~Dictionary() override {
+        auto kv_list = val.to_vector();
+        for (auto& [_, kv_pair] : kv_list) {
+            if (kv_pair.first) kv_pair.first->del_ref();
+            if (kv_pair.second) kv_pair.second->del_ref();
+        }
     }
 };
 
@@ -406,9 +432,10 @@ inline auto create_list(std::vector<Object*> n) {
     return o;
 }
 
-inline auto create_nfunc(std::function<Object*(Object*, List*)> func) {
+inline auto create_nfunc(const std::function<Object*(Object*, List*)>& func, const std::string& name="<unnamed>") {
     auto o = new NativeFunction(func);
     o->make_ref();
+    o->name = name;
     return o;
 }
 
@@ -455,12 +482,13 @@ inline auto copy_or_ref(Object* obj) -> Object* {
         assert(dict_obj != nullptr);
         for (auto& [_, kv_pair] : dict_obj->val.to_vector()) {
             // key是hashable value, 也就是不可变对象, 可以引用传递, 应该没有神人为可变对象重载__hash__方法的
-            kv_pair.first->make_ref();
             elem_list.emplace_back(_, std::pair{
                 kv_pair.first, copy_or_ref(kv_pair.second)
             });
         }
-        return new Dictionary(dep::Dict(elem_list));
+        auto new_dict_obj = new Dictionary(dep::Dict(elem_list));
+        new_dict_obj->make_ref();
+        return new_dict_obj;
     }
 
     default: {

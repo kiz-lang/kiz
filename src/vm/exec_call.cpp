@@ -15,15 +15,16 @@ bool Vm::is_true(model::Object* obj) {
         return false;
     }
 
-    model::List* args_list = model::cast_to_list(model::create_list({}));
+    // 修复：先创建列表，管理所有权
+    auto temp_list = model::create_list({});
+    model::List* args_list = model::cast_to_list(temp_list);
+    temp_list->del_ref(); // 移交所有权给 args_list，计数平衡
+
     call_method(obj, "__bool__", args_list);
     auto result = fetch_one_from_stack_top();
     bool ret = is_true(result);
 
-    // ==| IMPORTANT |==
-    // 使用完毕后释放临时参数列表
     args_list->del_ref();
-    // 释放递归调用的result对象
     result->del_ref();
     return ret;
 }
@@ -97,9 +98,6 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
             std::vector<model::Object*>{}
         );
 
-        new_frame->owner->make_ref();
-        new_frame->code_object->make_ref();
-
         // 储存self
         if (self and self->get_type() != model::Object::ObjectType::OT_Module) {
             self->make_ref();
@@ -120,7 +118,6 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
 
                 assert(param_val != nullptr && ("CALL: 参数" + std::to_string(i) + "为nil（不允许空参数）").c_str());
 
-                param_val->make_ref();
                 new_frame->locals.insert(param_name, param_val);
             }
 
@@ -284,6 +281,8 @@ void Vm::exec_CALL_METHOD(const Instruction& instruction) {
     DEBUG_OUTPUT("获取函数对象: " + func_obj->debug_string());
     handle_call(func_obj, args_obj, obj);
 
+    func_obj->del_ref();
+    obj->del_ref();
 }
 
 void Vm::exec_RET(const Instruction& instruction) {
@@ -291,7 +290,8 @@ void Vm::exec_RET(const Instruction& instruction) {
     // 兼容顶层调用帧返回
     if (call_stack.size() < 2) {
         if (!op_stack.empty()) {
-            fetch_one_from_stack_top();
+            auto top_val = fetch_one_from_stack_top();
+            if (top_val) top_val->del_ref();
         }
         call_stack.pop_back();
         return;

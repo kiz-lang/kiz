@@ -152,12 +152,12 @@ CallFrame* Vm::fetch_curr_call_frame() {
 }
 
 model::Object* Vm::fetch_one_from_stack_top() {
-    const auto stack_top = op_stack.empty() ? nullptr : op_stack.top();
+    if (op_stack.empty()) return nullptr; // 先判断空栈
+    auto stack_top = op_stack.top();
     if (stack_top) {
-        // ==| IMPORTANT |==
         stack_top->del_ref();
-        op_stack.pop();
     }
+    op_stack.pop();
     return stack_top;
 }
 

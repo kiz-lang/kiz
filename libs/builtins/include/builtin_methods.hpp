@@ -71,7 +71,7 @@ Object* str_is_alaph(Object* self, const List* args);
 Object* str_is_digit(Object* self, const List* args);
 Object* str_to_lower(Object* self, const List* args);
 Object* str_to_upper(Object* self, const List* args);
-
+Object* str_format(Object* self, const List* args);
 
 // Dict 类型原生函数
 Object* dict_eq(Object* self, const List* args);

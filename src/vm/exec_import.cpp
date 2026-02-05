@@ -173,7 +173,10 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
         assert(module_obj != nullptr);
 
         // 移除重复的make_ref()，仅一次即可
+        module_obj->make_ref();
         call_stack.back()->locals.insert(module_path, module_obj);
+
+        module_obj->make_ref();
         loaded_modules.insert(module_path, module_obj);
         return;
     } else {
@@ -204,8 +207,6 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
 
         {}
     });
-    new_frame->owner->make_ref();
-    new_frame->code_object->make_ref();
 
     size_t old_call_stack_size = call_stack.size();
     
@@ -254,19 +255,24 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
             assert(module_name_str != nullptr);
             module_name = module_name_str->val;
         }
-        // attrs持有module_obj
+        // 插入__owner_module__前，正确管理module_obj引用
         module_obj->make_ref();
-
         local_object->attrs.insert("__owner_module__", module_obj);
+        module_obj->del_ref(); // 移交所有权给local_object->attrs，计数平衡
+
+        // 插入到module_obj->attrs前，正确管理local_object引用
         local_object->make_ref();
         module_obj->attrs.insert(name, local_object);
+        local_object->del_ref(); // 移交所有权给module_obj->attrs，计数平衡
     }
 
     call_stack.pop_back();
 
     module_obj->path = module_path;
+    module_obj->make_ref();
     call_stack.back()->locals.insert(module_name, module_obj);
 
+    module_obj->make_ref();
     loaded_modules.insert(module_path, module_obj);
 }
 

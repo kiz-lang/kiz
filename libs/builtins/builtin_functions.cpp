@@ -11,7 +11,7 @@ namespace builtin {
 model::Object* print(model::Object* self, const model::List* args) {
     dep::UTF8String text;
     for (auto arg : args->val) {
-        text += dep::UTF8String(kiz::Vm::obj_to_debug_str(arg)) + " ";
+        text += dep::UTF8String(kiz::Vm::obj_to_str(arg)) + " ";
     }
     std::cout << text << std::endl;
     return model::load_nil();
@@ -180,7 +180,7 @@ model::Object* range(model::Object* self, const model::List* args) {
     } else return model::load_nil();
 
     for (dep::BigInt i = start_int; i < end_int; i+=step_int) {
-        auto i_obj = model::create_int(i);
+        auto i_obj = new model::Int(i); // 转移所有权
         range_vector.emplace_back(i_obj);
     }
     return model::create_list(range_vector);
@@ -297,14 +297,25 @@ model::Object* get_refc(model::Object* self, const model::List* args) {
 model::Object* create(model::Object* self, const model::List* args) {
     if (args->val.empty()) {
         auto o = new model::Object();
+        o->make_ref(); // 初始化引用计数为1（匹配后续调用方的del_ref）
+
+        // 正确管理based_obj的引用（移交所有权给attrs）
+        model::based_obj->make_ref();
         o->attrs.insert("__parent__", model::based_obj);
+        model::based_obj->del_ref();
+
         return o;
     }
     const auto obj = get_one_arg(args);
     const auto new_obj = new model::Object();
-    new_obj->attrs.insert("__parent__", obj);
-    return new_obj;
+    new_obj->make_ref(); // 初始化引用计数为1
 
+    // 正确管理传入obj的引用
+    obj->make_ref();
+    new_obj->attrs.insert("__parent__", obj);
+    obj->del_ref(); // 计数平衡
+
+    return new_obj;
 }
 
 model::Object* type_of_obj(model::Object* self, const model::List* args) {

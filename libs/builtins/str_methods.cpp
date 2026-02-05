@@ -165,12 +165,36 @@ Object* str_count(Object* self, const List* args) {
 
 
 Object* str_startswith(Object* self, const List* args) {
-    return load_nil();
+    auto self_str = cast_to_str(self)->val;
+    auto prefix = cast_to_str(
+        builtin::get_one_arg(args)
+    ) -> val;
 
+    if (prefix.empty()) {
+        return load_true();
+    }
+    if (prefix.size() > self_str.size()) {
+        return load_false();
+    }
+    // 比较原字符串的前prefix.size()个字符与前缀是否相等
+    return load_bool(self_str.compare(0, prefix.size(), prefix) == 0);
 }
 
 Object* str_endswith(Object* self, const List* args) {
-    return load_nil();
+    auto self_str = cast_to_str(self)->val;
+    auto suffix = cast_to_str(
+        builtin::get_one_arg(args)
+    ) -> val;
+
+    if (suffix.empty()) {
+        return load_true();
+    }
+    if (suffix.size() > self_str.size()) {
+        return load_false();
+    }
+
+    size_t start_pos = self_str.size() - suffix.size();
+    return load_bool(self_str.compare(start_pos, suffix.size(), suffix) == 0);
 
 }
 
@@ -228,6 +252,45 @@ Object* str_to_upper(Object* self, const List* args) {
 
     return create_str(dep::UTF8String(self_str->val).to_upper().to_string());
 
+}
+
+Object* str_format(Object* self, const List* args) {
+    auto format_str = cast_to_str(self)->val;
+    std::vector<std::string> str_vec;
+    for (auto item : args->val) {
+        str_vec.push_back(kiz::Vm::obj_to_str(item));
+    }
+
+    std::string result;
+    size_t arg_index = 0;  // 用于遍历str_vec的索引
+    size_t pos = 0;        // 用于遍历format_str的位置
+
+    // 遍历格式化字符串，查找{}占位符并替换
+    while (pos < format_str.size()) {
+        // 查找下一个{}的起始位置
+        size_t brace_pos = format_str.find("{}", pos);
+        if (brace_pos == std::string::npos) {
+            // 没有找到更多占位符，将剩余字符串追加到结果
+            result += format_str.substr(pos);
+            break;
+        }
+
+        // 将{}之前的普通字符串追加到结果
+        result += format_str.substr(pos, brace_pos - pos);
+
+        // 替换占位符：如果str_vec还有元素则替换，否则保留{}
+        if (arg_index < str_vec.size()) {
+            result += str_vec[arg_index];
+            arg_index++;
+        } else {
+            result += "{}";  // 参数不足时保留占位符
+        }
+
+        // 移动到{}之后的位置继续遍历
+        pos = brace_pos + 2;
+    }
+
+    return create_str(result);
 }
 
 

@@ -5,7 +5,22 @@ namespace model {
 
 // List.__call__
 Object* list_call(Object* self, const List* args) {
-    auto obj = new List({});
+    auto obj = create_list({});
+    std::vector<Object*> list = {};
+    if (args->val.empty()) {
+        return obj;
+    }
+
+    auto for_cast = builtin::get_one_arg(args);
+    while (true) {
+        kiz::Vm::call_method(for_cast, "__next__", new List({}));
+        auto res = kiz::Vm::fetch_one_from_stack_top();
+        if (res == stop_iter_signal) {
+            break;
+        }
+        list.push_back(res);
+    }
+    obj->val = list;
     return obj;
 }
 
@@ -285,7 +300,18 @@ Object* list_getitem(Object* self, const List* args) {
 }
 
 Object* list_count(Object* self, const List* args) {
-    return load_nil();
+    const auto obj = builtin::get_one_arg(args);
+    size_t count = 0;
+    auto self_list = cast_to_list(self);
+
+    for (const auto& item : self_list->val) {
+        kiz::Vm::call_method(obj, "__eq__", new List({item}));
+        auto res = kiz::Vm::fetch_one_from_stack_top();
+        if (res) {
+            ++ count;
+        }
+    }
+    return create_int(count);
 }
 
 Object* list_find(Object* self, const List* args) {

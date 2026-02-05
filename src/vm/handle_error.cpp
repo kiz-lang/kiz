@@ -185,6 +185,9 @@ void Vm::handle_throw() {
               << Color::RESET << std::endl;
     std::cout << std::endl;
 
+    curr_error->del_ref();
+    curr_error = nullptr;
+
     throw KizStopRunningSignal();
 }
 

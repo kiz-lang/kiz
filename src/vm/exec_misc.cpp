@@ -182,8 +182,12 @@ void Vm::exec_GET_ITER(const Instruction& instruction) {
 
 void Vm::exec_POP_ITER(const Instruction& instruction) {
     assert(!call_stack.empty());
-    assert(!call_stack.back().get()->iters.empty());
-    call_stack.back().get()->iters.pop_back();
+    auto curr_frame = call_stack.back().get();
+    assert(!curr_frame->iters.empty());
+
+    auto iter_obj = curr_frame->iters.back();
+    iter_obj->del_ref();
+    curr_frame->iters.pop_back();
 }
 
 void Vm::exec_JUMP_IF_FINISH_ITER(const Instruction& instruction) {
