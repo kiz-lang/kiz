@@ -18,19 +18,19 @@ kiz-lang 是一门 **面向对象（原型链模型）、强类型+动态类型(
 - 支持运算符重载与魔术方法
 - int 类型为无限精度整数
 - 小数类型为Decimal精准小数
-- 字符串类型为utf-8字符串
+- 字符串类型为utf-8字符串且支持f-string
 - 🪄 多范式兼容：支持OOP、FP等主流编程范式
 - 🔅 语法极简：关键字集高度精简
 - ✅ 规范友好：中文注释+统一命名规范
 - ✔️ 开发者友好：低门槛快速上手
 
 ## 📚 文档完善
-- [快速开始](#)
-- [kiz2026语法与特性文档](#)
-- [从源代码构建kiz指南](#)
+- [快速开始](docs/快速开始.md)
+- [kiz2026语法与特性文档](http://doc.kiz.random321.com)
+- [从源代码构建kiz指南](docs/从源代码构建kiz指南.md)
 - [项目结构与功能说明](docs/项目结构与功能说明.md)
-- [kiz库开发指南](#)
-- [提交issue/bug-report/feature-request/pull-request指南](#)
+- [kiz库开发指南](docs/kiz库开发指南.md)
+- [提交issue/bug-report/feature-request/pull-request指南](docs/提交issue/bug-report/feature-request/pull-request指南.md)
 
 ## 🔆 项目结构
 - **ArgParser**: 解析控制台参数
@@ -38,15 +38,15 @@ kiz-lang 是一门 **面向对象（原型链模型）、强类型+动态类型(
 - **Lexer**: 把源代码解析为token流(基于FSM)
 - **Parser**: 把token流解析为抽象语法树(基于朴素递归下降)
 - **IRGenerator**: 把抽象语法树解析为字节码
-- **VM**: 执行字节码(栈式虚拟机)
+- **VM**: 执行字节码(栈式虚拟机集成GC)
 - **Models**: 运行时对象模型系统(包含基于ARC的GC)
 - **Builtins**: 内置对象/函数
-- **SrcManager&ErrorReporter**: kiz代码源文件与TraceBack报错器
+- **SrcManager**: kiz代码源文件管理器
+- **ErrorReporter**: 错误格式化与打印器
 - **Depends**: 非业务工具类(Bigint, Decimal, U8String, HashMap, Dict)
 
 ## 📃 TODO
-- **feature** 完善Decimal类型的方法
-- **fixme** 确保引用计数正确
+- **feature** 完善Decimal类型的方法 && `List.__call___` && `Str.format()` && f-string 
 - **fixme** 所有报错使用util::err_reporter函数代替现在临时的assert
 
 ## 🪄 在线体验
