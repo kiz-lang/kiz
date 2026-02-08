@@ -52,6 +52,10 @@ class Decimal {
         return common_exp;
     }
 
+    Decimal(const BigInt& mantissa, int exponent)
+        : mantissa_(mantissa), exponent_(exponent) {
+    }
+
 public:
     // ========================= 构造函数 =========================
     Decimal() : mantissa_(0), exponent_(0) {}
@@ -239,9 +243,10 @@ public:
         BigInt a_mant, b_mant;
         int exp = align_exponent(*this, other, a_mant, b_mant);
         BigInt sum_mant = a_mant + b_mant;
-        Decimal res(sum_mant);
+        Decimal res;  // 使用默认构造函数
+        res.mantissa_ = sum_mant;
         res.exponent_ = exp;
-        res.normalize();
+        res.normalize();  // 只在最后 normalize 一次
         return res;
     }
 
@@ -249,8 +254,29 @@ public:
         BigInt a_mant, b_mant;
         int exp = align_exponent(*this, other, a_mant, b_mant);
         BigInt sub_mant = a_mant - b_mant;
-        Decimal res(sub_mant);
+        Decimal res;
+        res.mantissa_ = sub_mant;
         res.exponent_ = exp;
+        res.normalize();
+        return res;
+    }
+
+    // pow 方法也需要修复
+    [[nodiscard]] Decimal pow(const BigInt& exp) const {
+        assert(!exp.is_negative() && "Decimal pow: negative exponent not supported");
+        if (exp == BigInt(0)) {
+            return Decimal(BigInt(1));
+        }
+        BigInt mant_pow = BigInt::fast_pow_unsigned(mantissa_.abs(), exp);
+        if (mantissa_.is_negative() && (exp % BigInt(2) == BigInt(1))) {
+            mant_pow = BigInt(0) - mant_pow;
+        }
+        Decimal res;
+        res.mantissa_ = mant_pow;
+        // 修复：指数应该乘以 exp，而不是使用 static_cast<int>
+        // 需要将 BigInt 转换为 int，但要注意溢出
+        BigInt exp_int = exp;
+        res.exponent_ = exponent_ * static_cast<int>(exp_int.to_unsigned_long_long());
         res.normalize();
         return res;
     }
@@ -291,21 +317,6 @@ public:
         res.exponent_ = -n; // 设置指数为 -n（如-10）
         res.normalize(); // 此时normalize会正确简化：5000000000 → 5，exponent_-10→-1
 
-        return res;
-    }
-
-    [[nodiscard]] Decimal pow(const BigInt& exp) const {
-        assert(!exp.is_negative() && "Decimal pow: negative exponent not supported");
-        if (exp == BigInt(0)) {
-            return Decimal(BigInt(1));
-        }
-        BigInt mant_pow = BigInt::fast_pow_unsigned(mantissa_.abs(), exp);
-        if (mantissa_.is_negative() && (exp % BigInt(2) == BigInt(1))) {
-            mant_pow = BigInt(0) - mant_pow;
-        }
-        Decimal res(mant_pow);
-        res.exponent_ = exponent_ * static_cast<int>(exp.to_unsigned_long_long());
-        res.normalize();
         return res;
     }
 

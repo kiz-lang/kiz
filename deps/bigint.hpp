@@ -197,6 +197,41 @@ class BigInt {
     }
 
     /**
+     * @brief 无符号减法：计算 |a| - |b|，要求 |a| >= |b|
+     */
+    static BigInt unsigned_subtract(const BigInt& a, const BigInt& b) {
+        assert(!a.abs_less(b) && "unsigned_subtract requires |a| >= |b|");
+
+        BigInt result;
+        result.digits_.clear();
+        result.is_negative_ = false;
+
+        uint32_t borrow = 0;
+        for (size_t i = 0; i < a.digits_.size(); ++i) {
+            uint32_t a_digit = a.digits_[i];
+            uint32_t b_digit = (i < b.digits_.size()) ? b.digits_[i] : 0;
+
+            int32_t diff = static_cast<int32_t>(a_digit) - static_cast<int32_t>(b_digit) - borrow;
+
+            if (diff < 0) {
+                diff += 10;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+
+            result.digits_.push_back(static_cast<uint8_t>(diff));
+        }
+
+        // 移除前导零
+        while (result.digits_.size() > 1 && result.digits_.back() == 0) {
+            result.digits_.pop_back();
+        }
+
+        return result;
+    }
+
+    /**
     * @brief 辅助函数：无符号快速幂（底数和指数均为非负整数）
     * 二分幂核心逻辑：a^b = (a^(b/2))^2 （b为偶数） / (a^(b/2))^2 * a （b为奇数）
     */
@@ -300,10 +335,13 @@ public:
         }
         // 情况2：异号（一正一负）→ 绝对值相减，符号取绝对值大的
         else {
-            if (abs_less(other)) { // this绝对值 < other绝对值 → 结果符号=other符号
-                res = other - *this;
-            } else { // this绝对值 >= other绝对值 → 结果符号=this符号
-                res = *this - other;
+            if (abs_less(other)) {
+                // this绝对值 < other绝对值
+                res = unsigned_subtract(other, *this);
+                res.is_negative_ = other.is_negative_;
+            } else {
+                // this绝对值 >= other绝对值
+                res = unsigned_subtract(*this, other);
                 res.is_negative_ = is_negative_;
             }
         }
@@ -341,10 +379,10 @@ public:
             return {0};
         }
 
-        BigInt res;
+        // 先计算无符号乘法
+        BigInt res = karatsuba_mul(this->abs(), other.abs());
+        // 再设置符号（异或运算：同号得正，异号得负）
         res.is_negative_ = is_negative_ ^ other.is_negative_;
-        // 传入绝对值计算
-        res = karatsuba_mul(this->abs(), other.abs());
         res.trim_leading_zeros();
         return res;
     }

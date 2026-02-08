@@ -1,3 +1,0 @@
-start = now()
-print(111111111111^44)
-print("using", now()-start, "ns")
