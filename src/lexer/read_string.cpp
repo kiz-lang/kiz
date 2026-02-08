@@ -10,7 +10,7 @@ void Lexer::read_string() {
 
     next(); // 跳过引号
 
-    //bool closed = false;
+    bool closed = false;
     dep::UTF8String raw_str;
 
     // 消费字符串内容
@@ -22,7 +22,7 @@ void Lexer::read_string() {
         }
 
         if (c == quote_char) {
-            //closed = true;
+            closed = true;  // 取消注释这行
             next(); // 跳过闭合引号
             break;
         }
@@ -43,10 +43,10 @@ void Lexer::read_string() {
     std::string raw = raw_str.to_string();
     std::string content = handle_escape(raw);
 
-    // if (!closed) {
-    //     err::error_reporter(file_path_, {start_lno, lineno_, start_col, col_},
-    //                       "SyntaxError", "Unclosed string literal");
-    // }
+    if (!closed) {
+        err::error_reporter(file_path_, {start_lno, lineno_, start_col, col_},
+                          "SyntaxError", "Unclosed string literal");
+    }
 
     tokens_.emplace_back(TokenType::String, content, start_lno, lineno_, start_col, col_ - 1);
     curr_state_ = LexState::Start;
@@ -58,43 +58,43 @@ void Lexer::read_mstring() {
     size_t start_lno = lineno_;
     size_t start_col = col_;
 
-    next(); // 跳过M/m
-    next(); // 跳过开头的双引号"
+    next();  // 跳过M/m
+    dep::UTF8Char quote_char = src_[char_pos_];
 
-    bool unclosed = true;
+    next(); // 跳过引号
+
+    bool closed = false;
     dep::UTF8String raw_str;
 
     // 消费字符串内容
     while (char_pos_ < src_.size()) {
         dep::UTF8Char c = src_[char_pos_];
 
-        // 处理转义符
+        if (c == quote_char) {
+            closed = true;
+            next(); // 跳过闭合引号
+            break;
+        }
+
         if (c == '\\' && char_pos_ + 1 < src_.size()) {
             raw_str += c;
-            next(); // 跳过转义符\
+            next(); // 跳过转义符
             c = src_[char_pos_];
             raw_str += c;
             next(); // 消费转义后的字符
             continue;
         }
 
-        // 匹配非转义的闭合引号
-        if (c == '"') {
-            unclosed = false;
-            next(); // 跳过闭合引号
-            break;
-        }
-
         raw_str += c;
-        next(); // 消费字符
+        next();
     }
 
     std::string raw = raw_str.to_string();
     std::string content = handle_escape(raw);
 
-    if (unclosed) {
+    if (!closed) {
         err::error_reporter(file_path_, {start_lno, lineno_, start_col, col_},
-                          "SyntaxError", R"(Unclosed multiline string literal (m"): missing closing '"')");
+                          "SyntaxError", "Unclosed multiline string literal");
     }
 
     tokens_.emplace_back(TokenType::String, content, start_lno, lineno_, start_col, col_ - 1);
