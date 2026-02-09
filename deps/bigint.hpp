@@ -21,7 +21,7 @@
 #include <vector>
 #include <climits>  // 新增：用于 ULLONG_MAX
 
-#include "kiz.hpp"
+#include "../src/kiz.hpp"
 
 namespace dep {
 

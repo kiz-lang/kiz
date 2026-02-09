@@ -1,7 +1,7 @@
 #include <format>
 
 #include "../kiz.hpp"
-#include "../op_code/opcode.hpp"
+#include "../opcode/opcode.hpp"
 #include "ir_gen.hpp"
 #include "../parser/ast.hpp"
 #include "../models/models.hpp"

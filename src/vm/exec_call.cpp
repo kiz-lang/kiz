@@ -3,7 +3,7 @@
 
 #include "../models/models.hpp"
 #include "vm.hpp"
-#include "op_code/opcode.hpp"
+#include "opcode/opcode.hpp"
 
 namespace kiz {
 

@@ -16,20 +16,12 @@
 #include "../repl/color.hpp"
 
 namespace err {
-
-std::string generate_separator(const int col_start, const int col_end, const int line_end) {
-    std::stringstream ss;
-    ss << std::to_string(line_end).size(); // 对齐行号
-    for (int i = 1; i < col_start; ++i) ss << " ";
-    const int length = std::max(1, col_end - col_start + 1);
-    for (int i = 0; i < length; ++i) ss << "^";
-    return ss.str();
-}
-
 void context_printer(
     const std::string& src_path,
     const PositionInfo& pos
 ) {
+#ifdef __EMSCRIPTEN__
+#else
     size_t src_line_start = pos.lno_start;
     size_t src_line_end = pos.lno_end;
     size_t src_col_start = pos.col_start;
@@ -65,6 +57,7 @@ void context_printer(
     std::cout << Color::WHITE << line_prefix << error_line << Color::RESET << std::endl;
     // 箭头（对准错误列）
     std::cout << std::string(caret_offset, ' ') << Color::BRIGHT_RED << caret << Color::RESET << std::endl;
+#endif
 }
 
 
@@ -74,6 +67,9 @@ void error_reporter(
     const std::string& error_name,
     const std::string& error_content
 ) {
+#ifdef __EMSCRIPTEN__
+    std::cout << error_name << ":" << error_content << Color::RESET << std::endl;
+#else
     context_printer(src_path, pos);
     // 错误信息（类型加粗红 + 内容白）
     std::cout << Color::BOLD << Color::BRIGHT_RED << error_name
@@ -82,6 +78,7 @@ void error_reporter(
     std::cout << std::endl;
 
     throw KizStopRunningSignal();
+#endif
 }
 
-} // namespace err
+}// namespace err

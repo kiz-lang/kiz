@@ -123,8 +123,12 @@ Repl::Repl(): is_running_(true), multiline_start_(1), vm_(file_path) {
 std::string Repl::read(const std::string& prompt) {
     std::cout << Color::BRIGHT_MAGENTA << prompt << Color::RESET;
     std::cout.flush();
-    std::string result = to_utf8str(get_whole_input(&std::cin, &std::cout));
-    // std::cout << "Repl read result (Test)" << dep::UTF8String(result) << std::endl;
+    std::string result;
+    #ifdef _WIN32
+    result = to_utf8str(get_whole_input(&std::cin, &std::cout));
+    #else
+    std::getline(std::cin, result);
+    #endif
     return result;
 }
 

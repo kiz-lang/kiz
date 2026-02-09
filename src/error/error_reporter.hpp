@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "hashmap.hpp"
+#include "../../deps/hashmap.hpp"
 
 namespace err {
 
@@ -20,8 +20,6 @@ struct PositionInfo {
     size_t col_start;
     size_t col_end;
 };
-
-std::string generate_separator(int col_start, int col_end, int line_end);
 
 void error_reporter(
     const std::string& src_path,

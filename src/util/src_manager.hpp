@@ -11,8 +11,9 @@
 #include <string>
 #include <filesystem>
 #include <unordered_map>
+#include <vector>
 
-#include "hashmap.hpp"
+#include "../../deps/hashmap.hpp"
 
 namespace fs = std::filesystem;
 

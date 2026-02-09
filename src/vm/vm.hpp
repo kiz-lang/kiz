@@ -80,9 +80,11 @@ public:
     static dep::HashMap<model::Object*> std_modules;
 
     explicit Vm(const std::string& file_path_);
+    static void reset();
 
     static void entry_builtins();
     static void entry_std_modules();
+    static void handle_import(const std::string& module_path);
 
     static void set_main_module(model::Module* src_module);
     static void exec_curr_code();
@@ -108,6 +110,7 @@ public:
     static void call_function(model::Object* func_obj, model::Object* args_obj, model::Object* self);
     /// 运算符与普通方法分规则查找
     static void call_method(model::Object* obj, const std::string& attr_name, model::List* args);
+    static void execute_unit(const Instruction& instruction);
 
 private:
     /// 如果用户函数则创建调用栈，如果内置函数则执行并压上返回值

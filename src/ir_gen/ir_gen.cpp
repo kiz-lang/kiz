@@ -14,7 +14,7 @@
 
 #include "../kiz.hpp"
 #include "../vm/vm.hpp"
-#include "../op_code/opcode.hpp"
+#include "../opcode/opcode.hpp"
 
 namespace kiz {
 

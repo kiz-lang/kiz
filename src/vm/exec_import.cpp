@@ -7,7 +7,7 @@
 #include "builtins/include/builtin_functions.hpp"
 #include "ir_gen/ir_gen.hpp"
 #include "lexer/lexer.hpp"
-#include "op_code/opcode.hpp"
+#include "opcode/opcode.hpp"
 #include "parser/parser.hpp"
 #include "util/src_manager.hpp"
 
@@ -133,6 +133,10 @@ namespace kiz {
 void Vm::exec_IMPORT(const Instruction& instruction) {
     size_t path_idx = instruction.opn_list[0];
     std::string module_path = call_stack.back()->code_object->names[path_idx];
+    handle_import(module_path);
+}
+
+void Vm::handle_import(const std::string& module_path) {
     std::string content;
 
     // 先向缓存中查找
@@ -141,13 +145,23 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
         return;
     }
 
+    fs::path current_file_path;
+    for (const auto& frame: call_stack) {
+        if (frame->owner->get_type() == model::Object::ObjectType::OT_Module) {
+            const auto m = dynamic_cast<model::Module*>(frame->owner);
+            current_file_path = m->path;
+        }
+    }
+
     bool file_in_path = false;
+    fs::path actually_found_path = "";
     std::array for_search_paths = {
-        get_exe_abs_dir() / fs::path(file_path).parent_path() / fs::path(module_path),
+        get_exe_abs_dir() / current_file_path.parent_path() / fs::path(module_path),
         get_exe_abs_dir() / fs::path(module_path)
     };
-    fs::path actually_found_path = "";
 
+#ifdef __EMSCRIPTEN__
+#else
     for (const auto& for_search_path : for_search_paths) {
         if (fs::is_regular_file( for_search_path )) {
             file_in_path = true;
@@ -155,9 +169,14 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
             break;
         }
     }
+#endif
 
     if (file_in_path) {
+#ifdef __EMSCRIPTEN__
+        // 不可能走到这
+#else
         content = err::SrcManager::get_file_by_path(actually_found_path.string());
+#endif
     } else if (auto std_init_it = std_modules.find(module_path)) {
         auto std_init_func = dynamic_cast<model::NativeFunction*>(std_init_it->value);
         assert(std_init_func != nullptr);
@@ -184,7 +203,7 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
             "Failed to find module in path '{}', tried '{}', '{}'", module_path,
             for_search_paths[0].string(), for_search_paths[1].string()));
     }
-    
+
     Lexer lexer(module_path);
     Parser parser(module_path);
     IRGenerator ir_gen(module_path);
@@ -210,9 +229,9 @@ void Vm::exec_IMPORT(const Instruction& instruction) {
     });
 
     size_t old_call_stack_size = call_stack.size();
-    
+
     call_stack.emplace_back(std::move(new_frame));
-    
+
     while (running and !call_stack.empty()) {
         auto& curr_frame = *call_stack.back();
         auto& frame_code = curr_frame.code_object;

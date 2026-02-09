@@ -26,9 +26,6 @@ configure_file(
 
 # ===================== 手动枚举所有 .cpp 文件（仅列cpp，无hpp） =====================
 set(SRC_FILES
-        # 入口文件
-        ${PROJECT_SOURCE_DIR}/src/main.cpp
-
         # 编译器模块
         ${PROJECT_SOURCE_DIR}/src/lexer/lexer.cpp
         ${PROJECT_SOURCE_DIR}/src/lexer/read_string.cpp
@@ -53,12 +50,10 @@ set(SRC_FILES
         ${PROJECT_SOURCE_DIR}/src/vm/entry_builtins.cpp
         ${PROJECT_SOURCE_DIR}/src/vm/handle_error.cpp
         ${PROJECT_SOURCE_DIR}/src/vm/exec_import.cpp
+        ${PROJECT_SOURCE_DIR}/src/vm/execute_unit.cpp
 
-        # 工具模块
+        # 报错模块
         ${PROJECT_SOURCE_DIR}/src/error/error_reporter.cpp
-        ${PROJECT_SOURCE_DIR}/src/util/src_manager.cpp
-        ${PROJECT_SOURCE_DIR}/src/repl/repl.cpp
-        ${PROJECT_SOURCE_DIR}/src/repl/repl_readline.cpp
 )
 
 # lib 模块（仅列cpp）
@@ -74,6 +69,15 @@ set(LIB_SRC_FILES
         ${PROJECT_SOURCE_DIR}/libs/io/io_lib.cpp
 )
 
+set(CLI_FILES
+        # CLI_FILES
+        ${PROJECT_SOURCE_DIR}/src/util/src_manager.cpp
+        ${PROJECT_SOURCE_DIR}/src/repl/repl.cpp
+        ${PROJECT_SOURCE_DIR}/src/repl/repl_readline.cpp
+        ${PROJECT_SOURCE_DIR}/src/main.cpp
+
+)
+
 # ===================== 文件存在性检查（仅检查cpp） =====================
 foreach(src_file ${SRC_FILES})
     if(NOT EXISTS ${src_file})
@@ -87,52 +91,115 @@ foreach(lib_file ${LIB_SRC_FILES})
     endif()
 endforeach()
 
-# 合并所有cpp文件
-set(ALL_SRC_FILES ${SRC_FILES} ${LIB_SRC_FILES})
+option(BUILD_WASM "Build for WebAssembly" OFF)
 
-# ===================== 编译配置（核心：让编译器找到hpp） =====================
-# 仅添加cpp到可执行目标
-add_executable(kiz ${ALL_SRC_FILES})
+if(BUILD_WASM)
+    # 尝试自动查找Emscripten
+    if(NOT EMSCRIPTEN_ROOT_PATH)
+        # 检查常见位置
+        if(EXISTS "$ENV{HOME}/emsdk/upstream/emscripten")
+            set(EMSCRIPTEN_ROOT_PATH "$ENV{HOME}/emsdk/upstream/emscripten")
+        elseif(EXISTS "$ENV{USERPROFILE}/emsdk/upstream/emscripten")
+            set(EMSCRIPTEN_ROOT_PATH "$ENV{USERPROFILE}/emsdk/upstream/emscripten")
+        elseif(EXISTS "C:/emsdk/upstream/emscripten")
+            set(EMSCRIPTEN_ROOT_PATH "C:/emsdk/upstream/emscripten")
+        else()
+            # 尝试在当前项目目录查找
+            if(EXISTS "${CMAKE_SOURCE_DIR}/emsdk/upstream/emscripten")
+                set(EMSCRIPTEN_ROOT_PATH "${CMAKE_SOURCE_DIR}/emsdk/upstream/emscripten")
+            else()
+                message(FATAL_ERROR "Emscripten not found. Please set EMSCRIPTEN_ROOT_PATH or install Emscripten")
+            endif()
+        endif()
+    endif()
 
-# 关键：指定头文件搜索路径 → 编译器会在这些路径下自动找#include的hpp
-target_include_directories(kiz
-        PRIVATE
-        # src根目录
-        ${PROJECT_SOURCE_DIR}/src
+    message(STATUS "Emscripten path: ${EMSCRIPTEN_ROOT_PATH}")
 
-        # 依赖库目录
-        ${PROJECT_SOURCE_DIR}/deps
+    # 设置Emscripten工具链
+    set(CMAKE_TOOLCHAIN_FILE "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules/Platform/Emscripten.cmake")
 
-        ${PROJECT_SOURCE_DIR}/libs
+    # 添加Emscripten包含目录
+    include_directories(${EMSCRIPTEN_ROOT_PATH}/system/include)
 
-        # 生成的version.hpp所在目录
-        ${CMAKE_CURRENT_BINARY_DIR}/include
-)
+    # 对于WASM，排除CLI相关文件
+    set(WASM_SRC_FILES
+            ${SRC_FILES}
+            ${LIB_SRC_FILES}
+            ${PROJECT_SOURCE_DIR}/src/wasm_interface.cpp
+    )
 
-# 平台相关后缀
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    set_target_properties(kiz PROPERTIES SUFFIX ".exe")
+    # 创建WASM库
+    add_library(kiz_wasm STATIC ${WASM_SRC_FILES})
+
+    target_include_directories(kiz_wasm
+            PRIVATE
+            ${PROJECT_SOURCE_DIR}/src
+            ${PROJECT_SOURCE_DIR}/deps
+            ${PROJECT_SOURCE_DIR}/libs
+            ${CMAKE_CURRENT_BINARY_DIR}/include
+            ${EMSCRIPTEN_ROOT_PATH}/system/include
+    )
+
+    # 添加预处理器定义
+    target_compile_definitions(kiz_wasm PRIVATE EMSCRIPTEN __EMSCRIPTEN__)
+
+    # 创建WASM可执行文件
+    add_executable(kiz_wasm_module ${PROJECT_SOURCE_DIR}/src/wasm_interface.cpp)
+    target_link_libraries(kiz_wasm_module kiz_wasm)
+
+    # Emscripten编译选项
+    set_target_properties(kiz_wasm_module PROPERTIES
+            LINK_FLAGS "-s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s NO_DISABLE_EXCEPTION_CATCHING -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','stringToUTF8'] -s EXPORTED_FUNCTIONS=['_malloc','_free','_run_code','_allocate_memory','_free_memory','_get_last_error'] -s ENVIRONMENT=web -s EXPORT_NAME='createKizModule'"
+    )
+
+    # 设置输出名称
+    set_target_properties(kiz_wasm_module PROPERTIES
+            OUTPUT_NAME "kiz_wasm"
+            SUFFIX ".js"
+    )
+
+    message(STATUS "Building for WebAssembly")
+
 else()
-    set_target_properties(kiz PROPERTIES SUFFIX ".elf")
+    # 原有的本地构建配置
+    set(ALL_SRC_FILES ${SRC_FILES} ${LIB_SRC_FILES} ${CLI_FILES})
+    add_executable(kiz ${ALL_SRC_FILES})
+
+    target_include_directories(kiz
+            PRIVATE
+            ${PROJECT_SOURCE_DIR}/src
+            ${PROJECT_SOURCE_DIR}/deps
+            ${PROJECT_SOURCE_DIR}/libs
+            ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
+
+    if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+        set_target_properties(kiz PROPERTIES SUFFIX ".exe")
+    else()
+        set_target_properties(kiz PROPERTIES SUFFIX ".elf")
+    endif()
 endif()
 
 # ===================== 编译信息打印 =====================
-list(LENGTH ALL_SRC_FILES TOTAL_SRC_COUNT)
-list(LENGTH SRC_FILES SRC_DIR_COUNT)
-list(LENGTH LIB_SRC_FILES LIB_FILES_COUNT)
+if(BUILD_WASM)
+    message(STATUS "======================================")
+    message(STATUS "  Kiz WASM 构建配置")
+    message(STATUS "======================================")
+    message(STATUS "✅ 目标：WebAssembly")
+    message(STATUS "✅ 工具链：Emscripten")
+    message(STATUS "✅ 输出：kiz_wasm.js + kiz_wasm.wasm")
+else()
+    list(LENGTH ALL_SRC_FILES TOTAL_SRC_COUNT)
+    list(LENGTH SRC_FILES SRC_DIR_COUNT)
+    list(LENGTH LIB_SRC_FILES LIB_FILES_COUNT)
 
-message(STATUS "======================================")
-message(STATUS "  项目 kiz v${PROJECT_VERSION} 编译配置")
-message(STATUS "======================================")
-message(STATUS "✅ C++标准：C++20")
-message(STATUS "✅ 仅添加 .cpp 文件到编译目标，.hpp 自动查找")
-message(STATUS "✅ 源文件总数：${TOTAL_SRC_COUNT}")
-message(STATUS "  - src目录：${SRC_DIR_COUNT} 个 .cpp 文件")
-message(STATUS "  - libs：${LIB_FILES_COUNT} 个 .cpp 文件")
-message(STATUS "✅ 目标文件路径：${CMAKE_BINARY_DIR}/kiz$<TARGET_FILE_SUFFIX:kiz>")
-message(STATUS "✅ 编译器自动搜索 .hpp 的路径：")
-message(STATUS "  - ${PROJECT_SOURCE_DIR}/src")
-message(STATUS "  - ${PROJECT_SOURCE_DIR}/deps（依赖库hpp）")
-message(STATUS "  - ${PROJECT_SOURCE_DIR}/libs")
-message(STATUS "  - ${CMAKE_CURRENT_BINARY_DIR}/include（生成的version.hpp）")
+    message(STATUS "======================================")
+    message(STATUS "  项目 kiz v${PROJECT_VERSION} 编译配置")
+    message(STATUS "======================================")
+    message(STATUS "✅ C++标准：C++20")
+    message(STATUS "✅ 源文件总数：${TOTAL_SRC_COUNT}")
+    message(STATUS "  - src目录：${SRC_DIR_COUNT} 个 .cpp 文件")
+    message(STATUS "  - libs：${LIB_FILES_COUNT} 个 .cpp 文件")
+    message(STATUS "✅ 目标文件路径：${CMAKE_BINARY_DIR}/kiz$<TARGET_FILE_SUFFIX:kiz>")
+endif()
 message(STATUS "======================================")

@@ -4,7 +4,7 @@
  *
  * 负责初始化程序环境、解析命令行参数、启动repl
  * @author azhz1107cat
- * @date 20250-25
+ * @date 2025 10-25
  */
 
 #include "bigint.hpp"

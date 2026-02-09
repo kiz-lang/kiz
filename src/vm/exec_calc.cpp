@@ -160,9 +160,6 @@ void Vm::exec_NOT(const Instruction& instruction) {
 
 void Vm::exec_IS(const Instruction& instruction) {
     DEBUG_OUTPUT("exec is...");
-    if (op_stack.size() < 2) {
-        assert(false && "OP_IS: 操作数栈元素不足（需≥2）");
-    }
     auto b = fetch_one_from_stack_top();
     auto a = fetch_one_from_stack_top();
     bool is_same = a == b;
