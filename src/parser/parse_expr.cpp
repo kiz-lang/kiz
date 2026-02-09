@@ -1,10 +1,10 @@
 #include "parser.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <memory>
 #include <vector>
 
+#include "cassert"
 #include "../kiz.hpp"
 
 
@@ -284,7 +284,7 @@ std::unique_ptr<Expr> Parser::parse_primary() {
                 if (curr_token().type == TokenType::Comma) {
                     skip_token(",");
                 } else if (curr_token().type != TokenType::RParen) {
-                    assert(false && "Mismatched function parameters");
+                    err::error_reporter(file_path, curr_token().pos, "SyntaxError", "Mismatched function parameters");
                 }
             }
             skip_token(")");  // 跳过右括号
@@ -334,7 +334,7 @@ std::unique_ptr<Expr> Parser::parse_primary() {
                 init_vec.emplace_back(std::move(key), std::move(val));
                 break;
             }
-            else assert(false);
+            else err::error_reporter(file_path, curr_token().pos, "SyntaxError", "sep of dict must be ',' or ';'");
 
             init_vec.emplace_back(std::move(key), std::move(val));
         }

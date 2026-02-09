@@ -149,6 +149,7 @@ void run_file(const std::string& path) {
     auto module = kiz::IRGenerator::gen_mod(path, ir);
     kiz::Vm::set_main_module(module);
     kiz::Vm::exec_curr_code();
+    kiz::Vm::reset();
 }
 
 void show_help() {

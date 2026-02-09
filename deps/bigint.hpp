@@ -395,7 +395,8 @@ public:
     // ========================= 核心运算：取模 =========================
     BigInt operator%(const BigInt& other) const {
         // 断言：除数不能为0
-        assert(!(other.digits_.size() == 1 && other.digits_[0] == 0) && "BigInt mod: divisor cannot be zero");
+        if(other.digits_.size() == 1 && other.digits_[0] == 0)
+            throw NativeFuncError("CalculateError", "BigInt mod: divisor cannot be zero");
 
         // 特殊情况：被除数为0→结果为0
         if (digits_.size() == 1 && digits_[0] == 0) {
@@ -426,11 +427,12 @@ public:
     // ========================= 核心运算：除法 =========================
     BigInt operator/(const BigInt& other) const {
         // 断言：除数不能为0
-        assert(!(other.digits_.size() == 1 && other.digits_[0] == 0) && "BigInt division: divisor cannot be zero");
+        if(other.digits_.size() == 1 && other.digits_[0] == 0)
+            throw NativeFuncError("CalculateError", "divisor cannot be zero");
 
         // 特殊情况：被除数为0→结果为0
         if (digits_.size() == 1 && digits_[0] == 0) {
-            return BigInt(0);
+            return {0};
         }
 
         // 符号：同号为正，异号为负（异或运算）
@@ -452,7 +454,8 @@ public:
     // ========================= 核心运算：幂运算 =========================
     BigInt pow(const BigInt& other) const {
         // 指数必须为非负整数
-        assert(!other.is_negative_ && "BigInt pow: 指数不支持负数（BigInt 仅存整数）");
+        if(other.is_negative_)
+            throw NativeFuncError("CalculateError", "use nag into Bigint.pow unsupport");
 
         const BigInt& exp = other;
         const BigInt zero(0);

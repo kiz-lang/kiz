@@ -42,7 +42,7 @@ model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
     ast = std::move(ast_into);
     DEBUG_OUTPUT("generating...");
     // 检查AST根节点有效性（默认模块根为BlockStmt）
-    assert(ast && ast->ast_type == AstType::BlockStmt && "gen: AST根节点非BlockStmt");
+    assert(ast && ast->ast_type == AstType::BlockStmt);
     const auto* root_block = ast.get();
 
     // 初始化模块级代码容器
@@ -91,7 +91,7 @@ model::CodeObject* IRGenerator::make_code_obj() const {
 
 model::Int* IRGenerator::make_int_obj(const NumberExpr* num_expr) {
     DEBUG_OUTPUT("making int object...");
-    assert(num_expr && "make_int_obj: 数字节点为空");
+    assert(num_expr);
     auto the_num = dep::BigInt(num_expr->value);
     if (the_num >= 0 and the_num < 201) {
         auto obj = Vm::small_int_pool[the_num.to_unsigned_long_long()];
@@ -115,7 +115,7 @@ model::Decimal* IRGenerator::make_decimal_obj(const DecimalExpr* dec_expr) {
 
 model::String* IRGenerator::make_string_obj(const StringExpr* str_expr) {
     DEBUG_OUTPUT("making string object...");
-    assert(str_expr && "make_string_obj: 字符串节点为空");
+    assert(str_expr);
     auto str_obj = new model::String(str_expr->value);
     str_obj->make_ref();
     return str_obj;

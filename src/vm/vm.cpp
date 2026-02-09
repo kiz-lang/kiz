@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <format>
 
 #include "../kiz.hpp"
 
@@ -79,8 +80,8 @@ Vm::Vm(const std::string& file_path_) {
 void Vm::set_main_module(model::Module* src_module) {
     DEBUG_OUTPUT("loading module...");
     // 合法性校验：防止空指针访问
-    assert(src_module != nullptr && "Vm::run_module: 传入的src_module不能为nullptr");
-    assert(src_module->code != nullptr && "Vm::run_module: 模块的CodeObject未初始化（code为nullptr）");
+    assert(src_module != nullptr);
+    assert(src_module->code != nullptr);
     // 注册为main module
     main_module = src_module;
     src_module->make_ref();
@@ -290,6 +291,15 @@ std::string Vm::obj_to_debug_str(model::Object* for_cast_obj) {
     auto res = fetch_one_from_stack_top();
     std::string val = model::cast_to_str(res)->val;
     return val;
+}
+
+void Vm::assert_argc(size_t argc, const model::List* args) {
+    if (argc == args->val.size()) {
+        return;
+    }
+    throw NativeFuncError("ArgcError", std::format(
+        "expect {} but got {}", argc, args->val.size()
+    ));
 }
 
 } // namespace kiz

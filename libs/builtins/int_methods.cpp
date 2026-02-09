@@ -95,14 +95,13 @@ Object* int_neg(Object* self, const List* args) {
 
 // Int.__div__ 整数除法 self / args[0]（仅支持Int/Decimal，返回Decimal）
 Object* int_div(Object* self, const List* args) {
-    DEBUG_OUTPUT("You given " + std::to_string(args->val.size()) + " arguments (int_div)");
-    assert(args->val.size() == 1 && "function Int.div need 1 arg");
+    kiz::Vm::assert_argc(1, args);
 
     auto self_int = dynamic_cast<Int*>(self);
     // 与Int相除（返回Decimal，保留10位小数）
     auto another_int = dynamic_cast<Int*>(args->val[0]);
     if (another_int) {
-        assert(another_int->val != dep::BigInt(0) && "int_div: division by zero");
+        if (another_int->val == 0) throw NativeFuncError("CalculateError", "divisor cannot be zero");
         dep::Decimal left_dec(self_int->val);
         dep::Decimal right_dec(another_int->val);
         return new Decimal(left_dec.div(right_dec, 10));
@@ -110,7 +109,7 @@ Object* int_div(Object* self, const List* args) {
     // 与Decimal相除（返回Decimal）
     auto another_dec = dynamic_cast<Decimal*>(args->val[0]);
     if (another_dec) {
-        assert(!(another_dec->val == dep::Decimal(dep::BigInt(0))) && "int_div: division by zero");
+        if(another_dec->val == dep::Decimal(0)) throw NativeFuncError("CalculateError", "divisor cannot be zero");
         dep::Decimal left_dec(self_int->val);
         return new Decimal(left_dec.div(another_dec->val, 10));
     }

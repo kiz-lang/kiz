@@ -117,7 +117,7 @@ namespace ui {
 const std::string Repl::file_path = "<shell#>";
 
 Repl::Repl(): is_running_(true), multiline_start_(1), vm_(file_path) {
-    std::cout << "This is the kiz REPL " << KIZ_VERSION << "\n" << std::endl;
+    std::cout << "This is the kiz REPL " << "v" << KIZ_VERSION << "\n" << std::endl;
 }
 
 std::string Repl::read(const std::string& prompt) {
@@ -125,9 +125,9 @@ std::string Repl::read(const std::string& prompt) {
     std::cout.flush();
     std::string result;
     #ifdef _WIN32
-    result = to_utf8str(get_whole_input(&std::cin, &std::cout));
+        result = to_utf8str(get_whole_input(&std::cin, &std::cout));
     #else
-    std::getline(std::cin, result);
+        result = get_whole_input(&std::cin, &std::cout);
     #endif
     return result;
 }
@@ -174,7 +174,7 @@ void Repl::eval_and_print(const std::string& cmd, const size_t startline) {
         const auto module = kiz::IRGenerator::gen_mod(file_path, ir);
         vm_.set_main_module(module);
     } else {
-        assert(ir != nullptr && "No ir for run" );
+        if (!ir) throw KizStopRunningSignal("No ir for run" );
         vm_.set_and_exec_curr_code(ir);
     }
 

@@ -9,7 +9,6 @@
 #include "parser.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <cerrno>
 #include <iostream>
 #include <memory>
@@ -25,7 +24,7 @@ Token Parser::skip_token(const std::string& want_skip) {
 
     // 边界检查
     if (curr_tok_idx_ >= tokens_.size()) {
-        assert("skip_token: 索引越界");
+        throw KizStopRunningSignal("skip_token: Index out of range");
     }
 
     const Token& curr_tok = tokens_[curr_tok_idx_];
@@ -43,8 +42,6 @@ Token Parser::skip_token(const std::string& want_skip) {
 
     // 严格报错
     err::error_reporter(file_path, curr_token().pos, "SyntaxError", "Invalid token/grammar");
-    DEBUG_OUTPUT("You want to skip "+want_skip);
-    throw std::runtime_error("Invalid token/grammar");
 }
 
 // curr_token实现

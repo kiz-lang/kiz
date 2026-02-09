@@ -6,7 +6,7 @@
 namespace kiz {
 
 void IRGenerator::gen_expr(Expr* expr) {
-    assert(expr && "gen_expr: 表达式节点为空");
+    if(!expr) throw KizStopRunningSignal("gen_expr: null expr node");
     switch (expr->ast_type) {
         case AstType::NumberExpr: {
             // 生成LOAD_CONST指令（加载字面量常量）
@@ -103,7 +103,7 @@ void IRGenerator::gen_expr(Expr* expr) {
             else if (bin_expr->op == "is") opc = Opcode::OP_IS;
             else if (bin_expr->op == "in") opc = Opcode::OP_IN;
 
-            else assert(false && "gen_expr: 未支持的二元运算符");
+            else assert(false);
 
             curr_code_list.emplace_back(
                 opc,
@@ -120,7 +120,7 @@ void IRGenerator::gen_expr(Expr* expr) {
             Opcode opc;
             if (unary_expr->op == "-") opc = Opcode::OP_NEG;
             else if (unary_expr->op == "not") opc = Opcode::OP_NOT;
-            else assert(false && "gen_expr: 未支持的一元运算符");
+            else assert(false);
 
             curr_code_list.emplace_back(
                 opc,

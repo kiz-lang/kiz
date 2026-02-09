@@ -263,7 +263,8 @@ public:
 
     // pow 方法也需要修复
     [[nodiscard]] Decimal pow(const BigInt& exp) const {
-        assert(!exp.is_negative() && "Decimal pow: negative exponent not supported");
+        if (exp.is_negative())
+            throw NativeFuncError("CalculateError", "Decimal pow: negative exponent not supported");
         if (exp == BigInt(0)) {
             return Decimal(BigInt(1));
         }
@@ -297,7 +298,8 @@ public:
         if (other.mantissa_ == BigInt(0)) {
             throw KizStopRunningSignal();
         }
-        assert(n >= 0 && "n must be non-negative");
+        if (n < 0)
+            throw NativeFuncError("CalculateError", "n must be non-negative");
 
         BigInt a_mant, b_mant;
         // 对齐指数（抵消a/b的指数影响）

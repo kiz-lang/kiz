@@ -1,13 +1,11 @@
 #include "parser.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <memory>
 #include <vector>
 
 #include "../kiz.hpp"
-#include "../repl/color.hpp"
 
 namespace kiz {
 
@@ -50,7 +48,7 @@ std::unique_ptr<BlockStmt> Parser::parse_block(TokenType endswith1, TokenType en
         ) break;
 
         if (curr_tok.type == TokenType::EndOfFile) {
-            assert(false && "Block not terminated with 'end'");
+            err::error_reporter(file_path, curr_token().pos, "SyntaxError", "Block not terminated with 'end'");
         }
 
         if (auto stmt = parse_stmt()) {

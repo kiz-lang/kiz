@@ -112,9 +112,8 @@ bool ui::if_pressing_shift() {
  * @result 完整输入
  */
 std::string ui::get_whole_input(std::istream *is, std::ostream *os) {
-    if (!is) {
-        throw KizStopRunningSignal("istream pointer is null");
-    }
+    assert(is && "istream pointer is null");
+    assert(os && "ostream pointer is null");
 
     std::string input;
     char ch;
