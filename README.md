@@ -28,6 +28,7 @@ kiz-lang 是一门 **面向对象（原型链模型）、强类型+动态类型(
 - [快速开始](docs/快速开始.md)
 - [kiz2026语法与特性文档](http://doc.kiz.random321.com)
 - [从源代码构建kiz指南](docs/从源代码构建kiz指南.md)
+- [xmake构建教程](docs/xmake构建教程.md)
 - [项目结构与功能说明](docs/项目结构与功能说明.md)
 - [kiz库开发指南](docs/kiz库开发指南.md)
 - [提交issue/bug-report/feature-request/pull-request指南](docs/提交指南.md)
