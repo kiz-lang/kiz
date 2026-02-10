@@ -35,14 +35,12 @@ std::vector<model::Object*> Vm::const_pool{};
 dep::HashMap<model::Object*> Vm::std_modules {};
 
 CallFrame::~CallFrame() {
-    // ==| IMPORTANT |==
-    // 释放owner
     if (owner) owner->del_ref();
-    // 释放code_object
     if (code_object) code_object->del_ref();
+
     // 释放locals中所有对象
     auto locals_kv = locals.to_vector();
-    for (auto& [_, val] : locals_kv) {
+    for (auto& val : locals_kv | std::views::values) {
         if (val) val->del_ref();
     }
     // 释放iters中所有对象
@@ -71,7 +69,8 @@ Vm::Vm(const std::string& file_path_) {
     model::based_code_object->make_ref();
     for (dep::BigInt i = 0; i < 201; i+= 1) {
         auto int_obj = new model::Int{i};
-        int_obj->make_ref();
+        int_obj->make_ref(); // 创建
+        int_obj->make_ref(); // 小整数池持有
         small_int_pool[i.to_unsigned_long_long()] = int_obj;
     }
     entry_builtins();
@@ -266,32 +265,6 @@ void Vm::reset() {
     curr_error = nullptr;
     const_pool.clear();
     std_modules = dep::HashMap<model::Object*>{};
-}
-
-std::string Vm::obj_to_str(model::Object* for_cast_obj) {
-    DEBUG_OUTPUT("obj to str");
-    try {
-        call_method(for_cast_obj, "__str__", model::create_list({}));
-    } catch (NativeFuncError& e) {
-        call_method(for_cast_obj, "__dstr__", model::create_list({}));
-    }
-    auto res = fetch_one_from_stack_top();
-    std::string val = model::cast_to_str(res)->val;
-
-    return val;
-}
-
-
-std::string Vm::obj_to_debug_str(model::Object* for_cast_obj) {
-    DEBUG_OUTPUT("obj to debug str");
-    try {
-       call_method(for_cast_obj, "__dstr__", model::create_list({}));
-    } catch (NativeFuncError& e) {
-       call_method(for_cast_obj, "__str__", model::create_list({}));
-    }
-    auto res = fetch_one_from_stack_top();
-    std::string val = model::cast_to_str(res)->val;
-    return val;
 }
 
 void Vm::assert_argc(size_t argc, const model::List* args) {

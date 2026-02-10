@@ -51,6 +51,7 @@ set(SRC_FILES
         ${PROJECT_SOURCE_DIR}/src/vm/handle_error.cpp
         ${PROJECT_SOURCE_DIR}/src/vm/exec_import.cpp
         ${PROJECT_SOURCE_DIR}/src/vm/execute_unit.cpp
+        ${PROJECT_SOURCE_DIR}/src/vm/handle_call.cpp
 
         # 报错模块
         ${PROJECT_SOURCE_DIR}/src/error/error_reporter.cpp

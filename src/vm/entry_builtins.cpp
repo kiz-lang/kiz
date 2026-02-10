@@ -16,24 +16,28 @@ void Vm::entry_builtins() {
     //     cmd, help, delattr, setattr, getattr, hasattr,
     //     range, type_of, debug_str
     // );
-    builtins.insert("print", model::create_nfunc(builtin::print, "print"));
-    builtins.insert("input", model::create_nfunc(builtin::input, "input"));
-    builtins.insert("ischild", model::create_nfunc(builtin::ischild, "ischild"));
-    builtins.insert("create", model::create_nfunc(builtin::create, "create"));
-    builtins.insert("now", model::create_nfunc(builtin::now, "now"));
-    builtins.insert("get_refc", model::create_nfunc(builtin::get_refc, "get_refc"));
-    builtins.insert("breakpoint", model::create_nfunc(builtin::breakpoint, "breakpoint"));
-    builtins.insert("cmd", model::create_nfunc(builtin::cmd, "cmd"));
-    builtins.insert("help", model::create_nfunc(builtin::help, "help"));
-    builtins.insert("delattr", model::create_nfunc(builtin::delattr, "delattr"));
-    builtins.insert("setattr", model::create_nfunc(builtin::setattr, "setattr"));
-    builtins.insert("getattr", model::create_nfunc(builtin::getattr, "getattr"));
-    builtins.insert("hasattr", model::create_nfunc(builtin::hasattr, "hasattr"));
-    builtins.insert("range", model::create_nfunc(builtin::range, "range"));
-    builtins.insert("type_of", model::create_nfunc(builtin::type_of_obj, "type_of"));
-    builtins.insert("debug_str", model::create_nfunc(builtin::debug_str, "debug_str"));
+    auto builtin_insert = [](std::string name,  model::Object* f) {
+        f->make_ref();
+        builtins.insert(name, f);
+    };
+    builtin_insert("print", model::create_nfunc(builtin::print, "print"));
+    builtin_insert("input", model::create_nfunc(builtin::input, "input"));
+    builtin_insert("ischild", model::create_nfunc(builtin::ischild, "ischild"));
+    builtin_insert("create", model::create_nfunc(builtin::create, "create"));
+    builtin_insert("now", model::create_nfunc(builtin::now, "now"));
+    builtin_insert("get_refc", model::create_nfunc(builtin::get_refc, "get_refc"));
+    builtin_insert("breakpoint", model::create_nfunc(builtin::breakpoint, "breakpoint"));
+    builtin_insert("cmd", model::create_nfunc(builtin::cmd, "cmd"));
+    builtin_insert("help", model::create_nfunc(builtin::help, "help"));
+    builtin_insert("delattr", model::create_nfunc(builtin::delattr, "delattr"));
+    builtin_insert("setattr", model::create_nfunc(builtin::setattr, "setattr"));
+    builtin_insert("getattr", model::create_nfunc(builtin::getattr, "getattr"));
+    builtin_insert("hasattr", model::create_nfunc(builtin::hasattr, "hasattr"));
+    builtin_insert("range", model::create_nfunc(builtin::range, "range"));
+    builtin_insert("type_of", model::create_nfunc(builtin::type_of_obj, "type_of"));
+    builtin_insert("debug_str", model::create_nfunc(builtin::debug_str, "debug_str"));
 
-    builtins.insert("Object", model::based_obj);
+    builtin_insert("Object", model::based_obj);
 
     model::based_bool->attrs_insert("__parent__", model::based_obj);
     model::based_int->attrs_insert("__parent__", model::based_obj);
@@ -221,18 +225,18 @@ void Vm::entry_builtins() {
        );
    }));
 
-    builtins.insert("Int", model::based_int);
-    builtins.insert("Bool", model::based_bool);
-    builtins.insert("Decimal", model::based_decimal);
-    builtins.insert("List", model::based_list);
-    builtins.insert("Dict", model::based_dict);
-    builtins.insert("Str", model::based_str);
-    builtins.insert("Func", model::based_function);
-    builtins.insert("NFunc", model::based_native_function);
-    builtins.insert("__Nil", model::based_nil);
-    builtins.insert("Error", model::based_error);
-    builtins.insert("Module", model::based_module);
-    builtins.insert("__CodeObject", model::based_code_object);
-    builtins.insert("__StopIterSignal__", model::stop_iter_signal);
+    builtin_insert("Int", model::based_int);
+    builtin_insert("Bool", model::based_bool);
+    builtin_insert("Decimal", model::based_decimal);
+    builtin_insert("List", model::based_list);
+    builtin_insert("Dict", model::based_dict);
+    builtin_insert("Str", model::based_str);
+    builtin_insert("Func", model::based_function);
+    builtin_insert("NFunc", model::based_native_function);
+    builtin_insert("__Nil", model::based_nil);
+    builtin_insert("Error", model::based_error);
+    builtin_insert("Module", model::based_module);
+    builtin_insert("__CodeObject", model::based_code_object);
+    builtin_insert("__StopIterSignal__", model::stop_iter_signal);
 }
 }

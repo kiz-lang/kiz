@@ -116,7 +116,7 @@ public:
 
 private:
     /// 如果用户函数则创建调用栈，如果内置函数则执行并压上返回值
-    static void handle_call(model::Object* func_obj, model::Object* args_obj, model::Object* self);
+    static void handle_call(model::Object* func_obj, model::Object* args_obj, model::Object* self=nullptr);
 
     static void exec_ADD(const Instruction& instruction);
     static void exec_SUB(const Instruction& instruction);

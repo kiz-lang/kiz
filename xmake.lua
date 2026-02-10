@@ -45,7 +45,9 @@ target("kiz")
     add_files("src/vm/entry_std_modules.cpp")
     add_files("src/vm/entry_builtins.cpp")
     add_files("src/vm/handle_error.cpp")
+    add_files("src/vm/handle_call.cpp")
     add_files("src/vm/exec_import.cpp")
+    add_files("/src/vm/execute_unit.cpp")
 
     -- 工具模块
     add_files("src/error/error_reporter.cpp")

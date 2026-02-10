@@ -75,12 +75,10 @@ model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
 
 model::CodeObject* IRGenerator::make_code_obj() const {
     DEBUG_OUTPUT("making code object...");
-    // 复制常量池（管理引用计数）
-
     DEBUG_OUTPUT("make code obj : ir result");
-    for (const auto& inst : curr_code_list) {
-        DEBUG_OUTPUT(opcode_to_string(inst.opc));
-    }
+    // for (const auto& inst : curr_code_list) {
+    //     DEBUG_OUTPUT(opcode_to_string(inst.opc));
+    // }
 
     const auto code_obj = new model::CodeObject(
         curr_code_list, curr_names
@@ -99,8 +97,7 @@ model::Int* IRGenerator::make_int_obj(const NumberExpr* num_expr) {
         return obj;
     }
 
-    auto int_obj = new model::Int( the_num );
-    int_obj->make_ref();
+    auto int_obj = model::create_int( the_num );
     return int_obj;
 }
 
@@ -108,16 +105,14 @@ model::Int* IRGenerator::make_int_obj(const NumberExpr* num_expr) {
 model::Decimal* IRGenerator::make_decimal_obj(const DecimalExpr* dec_expr) {
     DEBUG_OUTPUT("making rational object...");
     auto decimal_str = dep::Decimal(dec_expr->value);
-    auto decimal_obj = new model::Decimal(decimal_str);
-    decimal_obj->make_ref();
+    auto decimal_obj = model::create_decimal(decimal_str);
     return decimal_obj;
 }
 
 model::String* IRGenerator::make_string_obj(const StringExpr* str_expr) {
     DEBUG_OUTPUT("making string object...");
     assert(str_expr);
-    auto str_obj = new model::String(str_expr->value);
-    str_obj->make_ref();
+    auto str_obj = model::create_str(str_expr->value);
     return str_obj;
 }
 
