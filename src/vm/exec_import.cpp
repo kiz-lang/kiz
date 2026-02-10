@@ -140,7 +140,7 @@ void Vm::handle_import(const std::string& module_path) {
     std::string content;
 
     // 先向缓存中查找
-    if (auto loaded_mod_it = loaded_modules.find(module_path)) {
+    if (auto loaded_mod_it = modules_cache.find(module_path)) {
         call_stack.back()->locals.insert(loaded_mod_it->value->path, loaded_mod_it->value);
         return;
     }
@@ -197,7 +197,7 @@ void Vm::handle_import(const std::string& module_path) {
         call_stack.back()->locals.insert(module_path, module_obj);
 
         module_obj->make_ref();
-        loaded_modules.insert(module_path, module_obj);
+        modules_cache.insert(module_path, module_obj);
         return;
     } else {
         throw NativeFuncError("PathError", std::format(
@@ -294,7 +294,7 @@ void Vm::handle_import(const std::string& module_path) {
     call_stack.back()->locals.insert(module_name, module_obj);
 
     module_obj->make_ref();
-    loaded_modules.insert(module_path, module_obj);
+    modules_cache.insert(module_path, module_obj);
 }
 
 }

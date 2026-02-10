@@ -23,7 +23,7 @@
 namespace kiz {
 
 dep::HashMap<model::Object*> Vm::builtins{};
-dep::HashMap<model::Module*> Vm::loaded_modules{};
+dep::HashMap<model::Module*> Vm::modules_cache{};
 model::Module* Vm::main_module;
 std::stack<model::Object*> Vm::op_stack{};
 std::vector<std::shared_ptr<CallFrame>> Vm::call_stack{};
@@ -252,19 +252,6 @@ void Vm::execute_instruction(const Instruction& instruction) {
     case Opcode::COPY_TOP:        exec_COPY_TOP(instruction);      break;
     default:                      assert(false && "execute_instruction: 未知 opcode");
     }
-}
-
-void Vm::reset() {
-    builtins = dep::HashMap<model::Object*>{};
-    loaded_modules = dep::HashMap<model::Module*>{};
-    main_module = nullptr;
-    call_stack = std::vector<std::shared_ptr<CallFrame>>{};
-
-    running = false;
-    file_path = "";
-    curr_error = nullptr;
-    const_pool.clear();
-    std_modules = dep::HashMap<model::Object*>{};
 }
 
 void Vm::assert_argc(size_t argc, const model::List* args) {

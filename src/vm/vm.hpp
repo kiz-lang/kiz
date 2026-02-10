@@ -62,7 +62,7 @@ struct CallFrame {
 
 class Vm {
 public:
-    static dep::HashMap<model::Module*> loaded_modules;
+    static dep::HashMap<model::Module*> modules_cache;
     static model::Module* main_module;
 
     static std::stack<model::Object*> op_stack;
@@ -80,7 +80,6 @@ public:
     static dep::HashMap<model::Object*> std_modules;
 
     explicit Vm(const std::string& file_path_);
-    static void reset();
 
     static void entry_builtins();
     static void entry_std_modules();
