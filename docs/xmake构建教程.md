@@ -49,3 +49,6 @@ xmake run kiz
 ```
 
 即可运行``kiz``的``REPL``程序。也可以尝试提取出可执行文件，这里不再赘述。
+
+===
+author: *Climber-Rong*
