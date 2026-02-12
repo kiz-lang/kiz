@@ -275,16 +275,15 @@ void IRGenerator::gen_expr(Expr* expr) {
             code_chunks.back().upvalues,
             code_chunks.back().var_names.size()
         );
-        code_obj->make_ref();
         code_chunks.pop_back();
 
         // 生成lambda函数体IR
+        code_obj->make_ref();
         const auto lambda_fn = new model::Function(
             lambda->name.empty() ? "<lambda>" : lambda->name,
             code_obj,
             lambda->params.size()
         );
-        lambda_fn->make_ref();
         lambda_fn->has_rest_params = lambda->has_rest_params;
 
 

@@ -4,6 +4,8 @@ project(kiz
         VERSION 0.6.0
         LANGUAGES CXX)
 
+add_compile_options(-Ofast)
+
 # ===================== 基础配置 =====================
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 20)

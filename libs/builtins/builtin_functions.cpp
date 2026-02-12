@@ -24,7 +24,7 @@ model::Object* input(model::Object* self, const model::List* args) {
     }
     std::string result;
     std::getline(std::cin, result);
-    return model::create_str(result);
+    return new model::String(result);
 }
 
 model::Object* ischild(model::Object* self, const model::List* args) {
@@ -139,7 +139,7 @@ model::Object* now(model::Object* self, const model::List* args) {
         std::chrono::high_resolution_clock::now()
         .time_since_epoch();
     int64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
-    return model::create_int( dep::BigInt(std::to_string(time)) );
+    return new model::Int( dep::BigInt(std::to_string(time)) );
 }
 
 model::Object* range(model::Object* self, const model::List* args) {
@@ -178,21 +178,19 @@ model::Object* range(model::Object* self, const model::List* args) {
     } else kiz::Vm::assert_argc({1,2,3}, args);
 
     for (dep::BigInt i = start_int; i < end_int; i+=step_int) {
-        auto i_obj = new model::Int(i); // 转移所有权
+        auto i_obj = new model::Int(i);
         range_vector.emplace_back(i_obj);
     }
-    return model::create_list(range_vector);
+    return new model::List(range_vector);
 }
 
 model::Object* setattr(model::Object* self, const model::List* args) {
-    auto arg_vector = args->val;
-    if (arg_vector.size() != 3) {
-        return model::load_nil();
-    }
+    const auto arg_vector = args->val;
+    kiz::Vm::assert_argc(3, args);
     auto for_set = arg_vector[0];
     auto attr_name = arg_vector[1];
     auto value = arg_vector[2];
-    for_set->attrs.insert(model::cast_to_str(attr_name)->val, value);
+    for_set->attrs_insert(model::cast_to_str(attr_name)->val, value);
     return model::load_nil();
 }
 
@@ -282,33 +280,27 @@ model::Object* hasattr(model::Object* self, const model::List* args) {
 
 model::Object* get_refc(model::Object* self, const model::List* args) {
     const auto obj = get_one_arg(args);
-    return model::create_int( obj->get_refc_() );
+    return new model::Int( obj->get_refc_() );
 }
 
 model::Object* create(model::Object* self, const model::List* args) {
     if (args->val.empty()) {
         auto o = new model::Object();
-        o->make_ref(); // 初始化引用计数为1（匹配后续调用方的del_ref）
 
-        // 正确管理based_obj的引用（移交所有权给attrs）
-        model::based_obj->make_ref();
-        o->attrs.insert("__parent__", model::based_obj);
-        model::based_obj->del_ref();
+        o->attrs_insert("__parent__", model::based_obj);
 
         return o;
     }
     const auto obj = get_one_arg(args);
     const auto new_obj = new model::Object();
-    new_obj->make_ref(); // 初始化引用计数为1
 
     new_obj->attrs_insert("__parent__", obj);
-    obj->del_ref(); // 计数平衡
 
     return new_obj;
 }
 
 model::Object* type_of_obj(model::Object* self, const model::List* args) {
-    auto for_check = get_one_arg(args);
+    const auto for_check = get_one_arg(args);
     std::string type_str;
     switch (for_check->get_type()) {
         case model::Object::ObjectType::Bool: type_str = "Bool"; break;
@@ -326,13 +318,13 @@ model::Object* type_of_obj(model::Object* self, const model::List* args) {
         case model::Object::ObjectType::Module: type_str = "Module"; break;
         default: type_str = "<Unknown>"; break;
     }
-    return model::create_str(type_str);
+    return new model::String(type_str);
 }
 
 model::Object* debug_str(model::Object* self, const model::List* args) {
     auto for_check = get_one_arg(args);
     auto debug_str = kiz::Vm::obj_to_debug_str(for_check);
-    return model::create_str(debug_str);
+    return new model::String(debug_str);
 }
 
 }

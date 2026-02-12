@@ -131,168 +131,165 @@ std::string get_file_name_by_path(const std::string& file_path) {
 namespace kiz {
 
 void Vm::handle_import(const std::string& module_path) {
-    std::string content;
-
-    // 先向缓存中查找
-    if (auto loaded_mod_it = modules_cache.find(module_path)) {
-        call_stack.back()->dyn_vars.insert(loaded_mod_it->value->path, loaded_mod_it->value);
-        return;
-    }
-
-    fs::path current_file_path;
-    for (const auto& frame: call_stack) {
-        if (frame->owner->get_type() == model::Object::ObjectType::Module) {
-            const auto m = dynamic_cast<model::Module*>(frame->owner);
-            current_file_path = m->path;
-        }
-    }
-
-    bool file_in_path = false;
-    fs::path actually_found_path = "";
-    std::vector for_search_paths = {
-        get_exe_abs_dir() / current_file_path.parent_path() / fs::path(module_path),
-        get_exe_abs_dir() / fs::path(module_path)
-    };
-
-#ifdef __EMSCRIPTEN__
-#else
-    for (const auto& for_search_path : for_search_paths) {
-        if (fs::is_regular_file( for_search_path )) {
-            file_in_path = true;
-            actually_found_path = for_search_path;
-            break;
-        }
-    }
-#endif
-
-
-    if (file_in_path) {
-#ifdef __EMSCRIPTEN__
-        // 不可能走到这
-#else
-        content = err::SrcManager::get_file_by_path(actually_found_path.string());
-#endif
-    } else if (auto std_init_it = std_modules.find(module_path)) {
-        auto std_init_func = dynamic_cast<model::NativeFunction*>(std_init_it->value);
-        assert(std_init_func != nullptr);
-
-        // 使用create_list创建临时参数，保存指针
-        model::List* args_list = model::cast_to_list(model::create_list({}));
-        model::Object* return_val = std_init_func->func(std_init_func, args_list);
-        // 使用后释放临时参数列表
-        args_list->del_ref();
-
-        assert(return_val != nullptr);
-        auto module_obj = dynamic_cast<model::Module*>(return_val);
-        assert(module_obj != nullptr);
-
-        // 移除重复的make_ref()，仅一次即可
-        module_obj->make_ref();
-        call_stack.back()->dyn_vars.insert(module_path, module_obj);
-
-        module_obj->make_ref();
-        modules_cache.insert(module_path, module_obj);
-        return;
-    } else {
-        throw NativeFuncError("PathError", std::format(
-            "Failed to find module in path '{}', tried '{}', '{}'", module_path,
-            for_search_paths[0].string(), for_search_paths[1].string()));
-    }
-
-    Lexer lexer(module_path);
-    Parser parser(module_path);
-    IRGenerator ir_gen(module_path);
-
-    lexer.prepare(content);
-    const auto tokens = lexer.tokenize();
-    auto ast = parser.parse(tokens);
-    const auto ir = ir_gen.gen(std::move(ast));
-    auto module_obj = IRGenerator::gen_mod(module_path, ir);
-
-
-    auto new_frame = new CallFrame{
-        .name = module_path,
-
-        .owner = module_obj,
-
-        .pc = 0,
-        .return_to_pc = module_obj->code->code.size(),
-        .last_bp = 0,
-        .code_object = module_obj->code,
-
-        .try_blocks{},
-        .iters{},
-        .dyn_vars = dep::HashMap<model::Object*>(), // load slow
-
-        .curr_error = nullptr
-    };
-
-    size_t old_call_stack_size = call_stack.size();
-
-    call_stack.emplace_back(new_frame);
-
-    while (running and !call_stack.empty()) {
-        auto& curr_frame = call_stack.back();
-        auto& frame_code = curr_frame->code_object;
-
-        // 检查是否执行到模块代码末尾：执行完毕则出栈
-        if (curr_frame->pc >= frame_code->code.size()) {
-            if (old_call_stack_size == call_stack.size() - 1) {
-                break;
-            }
-            call_stack.pop_back();
-            continue;
-        }
-
-        // 执行当前指令
-        const Instruction& curr_inst = frame_code->code[curr_frame->pc];
-        try {
-            execute_unit(curr_inst); // 调用VM的指令执行核心方法
-        } catch (const NativeFuncError& e) {
-            // 原生函数执行错误，抛出异常
-            instruction_throw(e.name, e.msg);
-            return;
-        } catch (const KizStopRunningSignal& e) {
-            // 模块执行中触发停止信号，终止执行
-            running = false;
-            return;
-        }
-
-        if (curr_inst.opc != Opcode::JUMP && curr_inst.opc != Opcode::JUMP_IF_FALSE &&
-            curr_inst.opc != Opcode::RET && curr_inst.opc != Opcode::JUMP_IF_FINISH_HANDLE_ERROR
-            && curr_inst.opc != Opcode::THROW && curr_inst.opc != Opcode::JUMP_IF_FINISH_ITER) {
-            curr_frame->pc++;
-            }
-
-    }
-
-    std::string module_name = get_file_name_by_path(module_path); // 默认值
-    // for (const auto& [name, local_object] : call_stack.back()->locals.to_vector()) {
-    //     if (name.starts_with("__private__")) continue;
-    //     if (name == "__name__") {
-    //         auto module_name_str = dynamic_cast<model::String*>(local_object);
-    //         assert(module_name_str != nullptr);
-    //         module_name = module_name_str->val;
-    //     }
-    //     // 插入__owner_module__前，正确管理module_obj引用
-    //     module_obj->make_ref();
-    //     local_object->attrs.insert("__owner_module__", module_obj);
-    //     module_obj->del_ref(); // 移交所有权给local_object->attrs，计数平衡
-    //
-    //     // 插入到module_obj->attrs前，正确管理local_object引用
-    //     local_object->make_ref();
-    //     module_obj->attrs.insert(name, local_object);
-    //     local_object->del_ref(); // 移交所有权给module_obj->attrs，计数平衡
-    // }
-
-    call_stack.pop_back();
-
-    module_obj->path = module_path;
-    module_obj->make_ref();
-    call_stack.back()->dyn_vars.insert(module_name, module_obj);
-
-    module_obj->make_ref();
-    modules_cache.insert(module_path, module_obj);
+//     std::string content;
+//
+//     // 先向缓存中查找
+//     if (auto loaded_mod_it = modules_cache.find(module_path)) {
+//         call_stack.back()->dyn_vars.insert(loaded_mod_it->value->path, loaded_mod_it->value);
+//         return;
+//     }
+//
+//     fs::path current_file_path;
+//     for (const auto& frame: call_stack) {
+//         if (frame->owner->get_type() == model::Object::ObjectType::Module) {
+//             const auto m = dynamic_cast<model::Module*>(frame->owner);
+//             current_file_path = m->path;
+//         }
+//     }
+//
+//     bool file_in_path = false;
+//     fs::path actually_found_path = "";
+//     std::vector for_search_paths = {
+//         get_exe_abs_dir() / current_file_path.parent_path() / fs::path(module_path),
+//         get_exe_abs_dir() / fs::path(module_path)
+//     };
+//
+// #ifdef __EMSCRIPTEN__
+// #else
+//     for (const auto& for_search_path : for_search_paths) {
+//         if (fs::is_regular_file( for_search_path )) {
+//             file_in_path = true;
+//             actually_found_path = for_search_path;
+//             break;
+//         }
+//     }
+// #endif
+//
+//
+//     if (file_in_path) {
+// #ifdef __EMSCRIPTEN__
+//         // 不可能走到这
+// #else
+//         content = err::SrcManager::get_file_by_path(actually_found_path.string());
+// #endif
+//     } else if (auto std_init_it = std_modules.find(module_path)) {
+//         auto std_init_func = dynamic_cast<model::NativeFunction*>(std_init_it->value);
+//         assert(std_init_func != nullptr);
+//
+//         model::List* args_list = model::cast_to_list(model::create_list({}));
+//         model::Object* return_val = std_init_func->func(std_init_func, args_list);
+//         // 使用后释放临时参数列表
+//         args_list->del_ref();
+//
+//         assert(return_val != nullptr);
+//         auto module_obj = dynamic_cast<model::Module*>(return_val);
+//         assert(module_obj != nullptr);
+//
+//         // 移除重复的make_ref()，仅一次即可
+//         module_obj->make_ref();
+//         call_stack.back()->dyn_vars.insert(module_path, module_obj);
+//
+//         module_obj->make_ref();
+//         modules_cache.insert(module_path, module_obj);
+//         return;
+//     } else {
+//         throw NativeFuncError("PathError", std::format(
+//             "Failed to find module in path '{}', tried '{}', '{}'", module_path,
+//             for_search_paths[0].string(), for_search_paths[1].string()));
+//     }
+//
+//     Lexer lexer(module_path);
+//     Parser parser(module_path);
+//     IRGenerator ir_gen(module_path);
+//
+//     lexer.prepare(content);
+//     const auto tokens = lexer.tokenize();
+//     auto ast = parser.parse(tokens);
+//     const auto ir = ir_gen.gen(std::move(ast));
+//     auto module_obj = IRGenerator::gen_mod(module_path, ir);
+//
+//
+//     auto new_frame = new CallFrame{
+//         .name = module_path,
+//
+//         .owner = module_obj,
+//
+//         .pc = 0,
+//         .return_to_pc = module_obj->code->code.size(),
+//         .last_bp = 0,
+//         .code_object = module_obj->code,
+//
+//         .try_blocks{},
+//         .iters{},
+//
+//         .curr_error = nullptr
+//     };
+//
+//     size_t old_call_stack_size = call_stack.size();
+//
+//     call_stack.emplace_back(new_frame);
+//
+//     while (running and !call_stack.empty()) {
+//         auto& curr_frame = call_stack.back();
+//         auto& frame_code = curr_frame->code_object;
+//
+//         // 检查是否执行到模块代码末尾：执行完毕则出栈
+//         if (curr_frame->pc >= frame_code->code.size()) {
+//             if (old_call_stack_size == call_stack.size() - 1) {
+//                 break;
+//             }
+//             call_stack.pop_back();
+//             continue;
+//         }
+//
+//         // 执行当前指令
+//         const Instruction& curr_inst = frame_code->code[curr_frame->pc];
+//         try {
+//             execute_unit(curr_inst); // 调用VM的指令执行核心方法
+//         } catch (const NativeFuncError& e) {
+//             // 原生函数执行错误，抛出异常
+//             forward_to_handle_throw(e.name, e.msg);
+//             return;
+//         } catch (const KizStopRunningSignal& e) {
+//             // 模块执行中触发停止信号，终止执行
+//             running = false;
+//             return;
+//         }
+//
+//         if (curr_inst.opc != Opcode::JUMP && curr_inst.opc != Opcode::JUMP_IF_FALSE &&
+//             curr_inst.opc != Opcode::RET && curr_inst.opc != Opcode::JUMP_IF_FINISH_HANDLE_ERROR
+//             && curr_inst.opc != Opcode::THROW && curr_inst.opc != Opcode::JUMP_IF_FINISH_ITER) {
+//             curr_frame->pc++;
+//             }
+//
+//     }
+//
+//     std::string module_name = get_file_name_by_path(module_path); // 默认值
+//     // for (const auto& [name, local_object] : call_stack.back()->locals.to_vector()) {
+//     //     if (name.starts_with("__private__")) continue;
+//     //     if (name == "__name__") {
+//     //         auto module_name_str = dynamic_cast<model::String*>(local_object);
+//     //         assert(module_name_str != nullptr);
+//     //         module_name = module_name_str->val;
+//     //     }
+//     //     // 插入__owner_module__前，正确管理module_obj引用
+//     //     module_obj->make_ref();
+//     //     local_object->attrs.insert("__owner_module__", module_obj);
+//     //     module_obj->del_ref(); // 移交所有权给local_object->attrs，计数平衡
+//     //
+//     //     // 插入到module_obj->attrs前，正确管理local_object引用
+//     //     local_object->make_ref();
+//     //     module_obj->attrs.insert(name, local_object);
+//     //     local_object->del_ref(); // 移交所有权给module_obj->attrs，计数平衡
+//     // }
+//
+//     call_stack.pop_back();
+//
+//     module_obj->path = module_path;
+//     module_obj->make_ref();
+//
+//     module_obj->make_ref();
+//     modules_cache.insert(module_path, module_obj);
 }
 
 }

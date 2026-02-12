@@ -13,7 +13,7 @@ Object* bool_call(Object* self, const List* args) {
 
 Object* bool_str(Object* self, const List* args) {
     const auto s = dynamic_cast<Bool*>(self);
-    return create_str(s->val ? "True" : "False");
+    return new String(s->val ? "True" : "False");
 }
 
 
@@ -33,9 +33,9 @@ Object* bool_eq(Object* self, const List* args) {
 Object* bool_hash(Object* self, const List* args) {
     auto self_bool = dynamic_cast<Bool*>(self);
     if (self_bool->val == true) {
-        return create_int(1);
+        return kiz::Vm::small_int_pool[1];
     }
-    return create_int(0);
+    return kiz::Vm::small_int_pool[0];
 }
 
 

@@ -73,7 +73,7 @@ std::streamsize util_write(
 }
 
 model::Object* init_module(model::Object* self, const model::List* args) {
-    auto mod = model::create_module("io_lib");
+    auto mod = new model::Module("io_lib");
 
     auto fast_read_fun = model::create_nfunc(fast_read);
     auto fast_write_fun = model::create_nfunc(fast_write);
@@ -99,7 +99,7 @@ model::Object* fast_read(model::Object* self, const model::List* args) {
     auto content = std::string(std::istreambuf_iterator(file),
                        std::istreambuf_iterator<char>()
     );
-    auto str_obj = model::create_str(content);
+    auto str_obj = new model::String(content);
     return str_obj;
 }
 

@@ -12,7 +12,7 @@ Object* str_call(Object* self, const List* args) {
     } else {
         val = kiz::Vm::obj_to_str(args->val[0]);
     }
-    return create_str(val);
+    return new String(val);
 }
 
 // String.__bool__
@@ -33,7 +33,7 @@ Object* str_add(Object* self, const List* args) {
         throw NativeFuncError("TypeError", "String.add only supports String type argument");
     
     // 拼接并返回新String
-    return create_str(self_str->val + another_str->val);
+    return new String(self_str->val + another_str->val);
 };
 
 // String.__mul__：字符串重复n次（self * n，返回新String，n为非负整数）
@@ -54,7 +54,7 @@ Object* str_mul(Object* self, const List* args) {
         result += self_str->val;
     }
     
-    return create_str(std::move(result));
+    return new String(std::move(result));
 };
 
 // String.__eq__：判断两个字符串是否相等 self == x
@@ -91,7 +91,7 @@ Object* str_hash(Object* self, const List* args) {
     auto self_str = dynamic_cast<String*>(self);
     assert(self_str != nullptr);
     auto hashed_str = dep::hash_string(self_str->val);
-    return create_int(dep::BigInt(hashed_str));
+    return new Int(dep::BigInt(hashed_str));
 }
 
 Object* str_next(Object* self, const List* args) {
@@ -107,23 +107,23 @@ Object* str_next(Object* self, const List* args) {
 
     if (index < self_str->val.size()) {
         auto res = dep::UTF8String(self_str->val)[index];
-        self->attrs_insert("__current_index__", create_int(index+1));
-        return create_str(res.to_string());
+        self->attrs_insert("__current_index__", new Int(index+1));
+        return new String(res.to_string());
     }
-    self->attrs_insert("__current_index__", create_int(0));
+    self->attrs_insert("__current_index__", kiz::Vm::small_int_pool[0]);
     return load_stop_iter_signal();
 }
 
 Object* str_str(Object* self, const List* args) {
     auto self_str = dynamic_cast<String*>(self);
     assert(self_str != nullptr);
-    return create_str(self_str->val);
+    return new String(self_str->val);
 }
 
 Object* str_dstr(Object* self, const List* args) {
     auto self_str = dynamic_cast<String*>(self);
     assert(self_str != nullptr);
-    return create_str("\"" + self_str->val + "\"");
+    return new String("\"" + self_str->val + "\"");
 }
 
 Object* str_getitem(Object* self, const List* args) {
@@ -135,7 +135,7 @@ Object* str_getitem(Object* self, const List* args) {
     if (index < text.size()) {
         throw NativeFuncError("GetItemError", std::format("index {} out of range", index));
     }
-    return create_str( text[index] .to_string() );
+    return new String( text[index] .to_string() );
 }
 
 Object* str_foreach(Object* self, const List* args) {
@@ -146,7 +146,7 @@ Object* str_foreach(Object* self, const List* args) {
     dep::BigInt idx = 0;
     for (const auto& e : dep::UTF8String(self_str->val)) {
         kiz::Vm::call_function(func_obj, {
-            create_str(e.to_string())
+            new String(e.to_string())
         }, nullptr);
         idx += 1;
     }
@@ -160,14 +160,14 @@ Object* str_count(Object* self, const List* args) {
 
     for (const auto& c : dep::UTF8String(self_str->val)) {
         kiz::Vm::call_method(obj, "__eq__", {
-            create_str(c.to_string())
+            new String(c.to_string())
         });
-        auto res = kiz::Vm::fetch_stack_top();
+        auto res = kiz::Vm::get_stack_top();
         if (res) {
             ++ count;
         }
     }
-    return create_int(count);
+    return new Int(count);
 }
 
 
@@ -208,7 +208,7 @@ Object* str_endswith(Object* self, const List* args) {
 Object* str_len(Object* self, const List* args) {
     auto self_str = cast_to_str(self);
 
-    return create_int(dep::UTF8String(self_str->val).size());
+    return new Int(dep::UTF8String(self_str->val).size());
 }
 
 Object* str_is_alaph(Object* self, const List* args) {
@@ -243,7 +243,7 @@ Object* str_substr(Object* self, const List* args) {
         len = cast_to_int(args_vec[1])->val.to_unsigned_long_long();
     }
 
-    return create_str(dep::UTF8String(self_str->val).substr(
+    return new String(dep::UTF8String(self_str->val).substr(
         pos, len
     ).to_string());
 }
@@ -251,13 +251,13 @@ Object* str_substr(Object* self, const List* args) {
 Object* str_to_lower(Object* self, const List* args) {
     auto self_str = cast_to_str(self);
 
-    return create_str(dep::UTF8String(self_str->val).to_lower().to_string());
+    return new String(dep::UTF8String(self_str->val).to_lower().to_string());
 }
 
 Object* str_to_upper(Object* self, const List* args) {
     auto self_str = cast_to_str(self);
 
-    return create_str(dep::UTF8String(self_str->val).to_upper().to_string());
+    return new String(dep::UTF8String(self_str->val).to_upper().to_string());
 
 }
 
@@ -297,7 +297,7 @@ Object* str_format(Object* self, const List* args) {
         pos = brace_pos + 2;
     }
 
-    return create_str(result);
+    return new String(result);
 }
 
 

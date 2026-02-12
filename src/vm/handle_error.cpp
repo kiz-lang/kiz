@@ -7,15 +7,13 @@ namespace kiz {
 
 // -------------------------- 异常处理 --------------------------
 
-void Vm::instruction_throw(const std::string& name, const std::string& content) {
-    // 创建即计数
-    const auto err_name = model::create_str(name);
-    const auto err_msg = model::create_str(content);
+void Vm::forward_to_handle_throw(const std::string& name, const std::string& content) {
+    const auto err_name = new model::String(name);
+    const auto err_msg = new model::String(content);
     const auto err_obj = new model::Error(make_pos_info());
-    err_obj->make_ref();
 
-    err_obj->attrs.insert("__name__", err_name);
-    err_obj->attrs.insert("__msg__", err_msg);
+    err_obj->attrs_insert("__name__", err_name);
+    err_obj->attrs_insert("__msg__", err_msg);
 
     // 替换全局curr_error前，释放旧错误对象
     if (call_stack.back()->curr_error) {
@@ -34,8 +32,7 @@ void Vm::handle_throw() {
     size_t target_pc = 0;
 
     // 逆序遍历调用栈，寻找最近的 try 块
-    for (auto frame_it = call_stack.rbegin(); frame_it != call_stack.rend(); ++frame_it) {
-        CallFrame* frame = *frame_it;
+    for (auto frame : std::ranges::reverse_view(call_stack)) {
         if (!frame->try_blocks.empty()) {
             target_frame = frame;
             auto try_frame = frame->try_blocks.back();
@@ -80,7 +77,7 @@ void Vm::handle_throw() {
     auto error_msg = obj_to_str(err_msg_it->value);
 
     // 报错
-    if (auto err_obj = dynamic_cast<model::Error*>(call_stack.back()->curr_error)) {
+    if (const auto err_obj = dynamic_cast<model::Error*>(call_stack.back()->curr_error)) {
         std::cout << Color::BRIGHT_RED << "\nTrace Back: " << Color::RESET << std::endl;
         for (auto& [_path, _pos]: err_obj->positions ) {
             err::context_printer(_path, _pos);

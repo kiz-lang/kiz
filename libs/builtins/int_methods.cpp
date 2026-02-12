@@ -12,7 +12,7 @@ Object* int_call(Object* self, const List* args) {
         val = dep::BigInt(s->val);
     }
     else if (!kiz::Vm::is_true(a)) val = dep::BigInt(0);
-    return create_int(val);
+    return new Int(val);
 }
 
 // Int.__bool__
@@ -34,13 +34,13 @@ Object* int_add(Object* self, const List* args) {
     // 与Int相加
     auto another_int = dynamic_cast<Int*>(args->val[0]);
     if (another_int) {
-        return create_int(self_int->val + another_int->val);
+        return new Int(self_int->val + another_int->val);
     }
     // 与Decimal相加（返回Decimal）
     auto another_dec = dynamic_cast<Decimal*>(args->val[0]);
     if (another_dec) {
         dep::Decimal left_dec(self_int->val);
-        return create_decimal(left_dec + another_dec->val);
+        return new Decimal(left_dec + another_dec->val);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "function Int.add second arg need be Int or Decimal");
@@ -54,13 +54,13 @@ Object* int_sub(Object* self, const List* args) {
     // 与Int相减
     auto another_int = dynamic_cast<Int*>(args->val[0]);
     if (another_int) {
-        return create_int(self_int->val - another_int->val);
+        return new Int(self_int->val - another_int->val);
     }
     // 与Decimal相减（返回Decimal）
     auto another_dec = dynamic_cast<Decimal*>(args->val[0]);
     if (another_dec) {
         dep::Decimal left_dec(self_int->val);
-        return create_decimal(left_dec - another_dec->val);
+        return new Decimal(left_dec - another_dec->val);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "function Int.sub second arg need be Int or Decimal");
@@ -74,13 +74,13 @@ Object* int_mul(Object* self, const List* args) {
     // 与Int相乘
     auto another_int = dynamic_cast<Int*>(args->val[0]);
     if (another_int) {
-        return create_int(self_int->val * another_int->val);
+        return new Int(self_int->val * another_int->val);
     }
     // 与Decimal相乘（返回Decimal）
     auto another_dec = dynamic_cast<Decimal*>(args->val[0]);
     if (another_dec) {
         dep::Decimal left_dec(self_int->val);
-        return create_decimal(left_dec * another_dec->val);
+        return new Decimal(left_dec * another_dec->val);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "function Int.mul second arg need be Int or Decimal");
@@ -107,14 +107,14 @@ Object* int_div(Object* self, const List* args) {
         if (another_int->val == 0) throw NativeFuncError("CalculateError", "divisor cannot be zero");
         dep::Decimal left_dec(self_int->val);
         dep::Decimal right_dec(another_int->val);
-        return create_decimal(left_dec.div(right_dec, 10));
+        return new Decimal(left_dec.div(right_dec, 10));
     }
     // 与Decimal相除（返回Decimal）
     auto another_dec = dynamic_cast<Decimal*>(args->val[0]);
     if (another_dec) {
         if(another_dec->val == dep::Decimal(0)) throw NativeFuncError("CalculateError", "divisor cannot be zero");
         dep::Decimal left_dec(self_int->val);
-        return create_decimal(left_dec.div(another_dec->val, 10));
+        return new Decimal(left_dec.div(another_dec->val, 10));
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "function Int.div second arg need be Int or Decimal");
@@ -136,9 +136,9 @@ Object* int_pow(Object* self, const List* args) {
         dep::Decimal res = base_dec.pow(abs_exp);
         // 负指数：1 / res
         dep::Decimal one(1);
-        return create_decimal(one.div(res, 10));
+        return new Decimal(one.div(res, 10));
     } else {
-        return create_int(self_int->val.pow(exp_int->val));
+        return new Int(self_int->val.pow(exp_int->val));
     }
 };
 
@@ -161,7 +161,7 @@ Object* int_mod(Object* self, const List* args) {
     ) {
         remainder += another_int->val;
     }
-    return create_int(dep::BigInt(remainder));
+    return new Int(dep::BigInt(remainder));
 };
 
 // Int.__eq__ 相等判断：self == args[0]（仅支持Int/Decimal）
@@ -227,12 +227,12 @@ Object* int_gt(Object* self, const List* args) {
 // Int.__hash__
 Object* int_hash(Object* self, const List* args) {
     auto self_int = dynamic_cast<Int*>(self);
-    return create_int(self_int->val);
+    return new Int(self_int->val);
 }
 
 Object* int_str(Object* self, const List* args) {
     auto self_int = dynamic_cast<Int*>(self);
-    return create_str(self_int->val.to_string());
+    return new String(self_int->val.to_string());
 }
 
 

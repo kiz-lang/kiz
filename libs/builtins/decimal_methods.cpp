@@ -27,7 +27,7 @@ Object* decimal_call(Object* self, const List* args) {
         val = dep::Decimal(0);
     }
 
-    return create_decimal(val);
+    return new Decimal(val);
 }
 
 // Decimal.__bool__：非零判断（0为false，其余为true）
@@ -48,12 +48,12 @@ Object* decimal_add(Object* self, const List* args) {
     // 与Int相加
     if (auto another_int = dynamic_cast<Int*>(args->val[0])) {
         dep::Decimal res = self_dec->val + another_int->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 与Decimal相加
     if (auto another_dec = dynamic_cast<Decimal*>(args->val[0])) {
         dep::Decimal res = self_dec->val + another_dec->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "Decimal.add second arg need be Int or Decimal");
@@ -69,12 +69,12 @@ Object* decimal_sub(Object* self, const List* args) {
     // 与Int相减
     if (auto another_int = dynamic_cast<Int*>(args->val[0])) {
         dep::Decimal res = self_dec->val - another_int->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 与Decimal相减
     if (auto another_dec = dynamic_cast<Decimal*>(args->val[0])) {
         dep::Decimal res = self_dec->val - another_dec->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "Decimal.sub second arg need be Int or Decimal");
@@ -90,12 +90,12 @@ Object* decimal_mul(Object* self, const List* args) {
     // 与Int相乘
     if (auto another_int = dynamic_cast<Int*>(args->val[0])) {
         dep::Decimal res = self_dec->val * another_int->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 与Decimal相乘
     if (auto another_dec = dynamic_cast<Decimal*>(args->val[0])) {
         dep::Decimal res = self_dec->val * another_dec->val;
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "Decimal.mul second arg need be Int or Decimal");
@@ -120,7 +120,7 @@ Object* decimal_div(Object* self, const List* args) {
             throw NativeFuncError("CalculateError", "decimal_div: division by zero");
 
         dep::Decimal res = self_dec->val.div(divisor, 10); // 保留10位小数
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 与Decimal相除
     if (auto another_dec = dynamic_cast<Decimal*>(args->val[0])) {
@@ -128,7 +128,7 @@ Object* decimal_div(Object* self, const List* args) {
             throw NativeFuncError("CalculateError",  "decimal_div: division by zero");
 
         dep::Decimal res = self_dec->val.div(another_dec->val, 10); // 保留10位小数
-        return create_decimal(res);
+        return new Decimal(res);
     }
     // 仅允许Int/Decimal
     throw NativeFuncError("TypeError", "Decimal.div second arg need be Int or Decimal");
@@ -150,7 +150,7 @@ Object* decimal_pow(Object* self, const List* args) {
         throw NativeFuncError("CalculateError", "decimal_pow: negative exponent not supported");
 
     dep::Decimal res = self_dec->val.pow(exp_int->val);
-    return create_decimal(res);
+    return new Decimal(res);
 }
 
 // Decimal.__eq__：相等判断（self == args[0]），支持Int/Decimal
@@ -223,14 +223,14 @@ Object* decimal_neg(Object* self, const List* args) {
     // 对Decimal值取反（0 - self_val 或直接用重载的-运算符）
     dep::Decimal neg_val = dep::Decimal(dep::BigInt(0)) - self_dec->val;
 
-    return create_decimal(neg_val);
+    return new Decimal(neg_val);
 }
 
 // Decimal.__hash__
 Object* decimal_hash(Object* self, const List* args) {
     const auto self_dec = dynamic_cast<Decimal*>(self);
     assert(self_dec != nullptr);
-    return create_int(self_dec->val.hash());
+    return new Int(self_dec->val.hash());
 }
 
 
@@ -268,7 +268,7 @@ Object* decimal_limit_div(Object* self, const List* args) {
 
     // 调用修复后的div方法
     dep::Decimal res = self_dec->val.div(divisor, n);
-    return create_decimal(res);
+    return new Decimal(res);
 }
 
 // Decimal.week_eq
@@ -343,12 +343,12 @@ Object* decimal_round_div(Object* self, const List* args) {
 
     // 使用新的div_round方法
     dep::Decimal res = self_dec->val.div_round(divisor, n);
-    return create_decimal(res);
+    return new Decimal(res);
 }
 
 Object* decimal_str(Object* self, const List* args) {
     const auto self_dec = dynamic_cast<Decimal*>(self);
-    return create_str(self_dec->val.to_string());
+    return new String(self_dec->val.to_string());
 }
 
 }  // namespace model

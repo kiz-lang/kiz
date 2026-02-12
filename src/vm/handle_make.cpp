@@ -14,8 +14,8 @@ auto Vm::make_pos_info() -> std::vector<std::pair<std::string, err::PositionInfo
             path = m->path;
         }
         err::PositionInfo pos{};
-        bool cond = frame_index == call_stack.size() - 1;
-        if (cond) {
+        bool is_last_frame = frame_index == call_stack.size() - 1;
+        if (is_last_frame) {
             pos = frame->code_object->code.at(frame->pc).pos;
         } else {
             pos = frame->code_object->code.at(frame->pc - 1).pos;
@@ -28,78 +28,56 @@ auto Vm::make_pos_info() -> std::vector<std::pair<std::string, err::PositionInfo
 
 void Vm::make_list(size_t len) {
     size_t elem_count = len;
+    assert(op_stack.size() >= elem_count);
 
-    assert(op_stack.size() > elem_count);
-
-    // 弹出栈顶 elem_count 个元素（栈是LIFO，弹出顺序是 argN → arg2 → arg1）
     std::vector<model::Object*> elem_list;
-    elem_list.reserve(elem_count);  // 预分配空间，避免扩容
-    for (size_t i = 0; i < elem_count; ++i) {
-        model::Object* elem = fetch_stack_top();
-
-        // 校验：元素不能为 nullptr
-        assert(elem && ("MAKE_LIST: 第" + std::to_string(i) + "个元素为nil（非法）").c_str());
-
-        elem_list.push_back(elem);
-    }
-
-    // 反转元素顺序（恢复原参数顺序：arg1 → arg2 → ... → argN）
-    std::ranges::reverse(elem_list);
-
-    // 创建 List 对象，压入栈
-    auto* list_obj = model::create_list(elem_list);
-    push_to_stack(list_obj);
-
-    DEBUG_OUTPUT("make_list: 打包 " + std::to_string(elem_count) + " 个元素为 List，压栈成功");
-}
-
-void Vm::make_dict(size_t len) {
-    DEBUG_OUTPUT("exec make_dict...");
-
-    size_t elem_count = len;
-    const size_t total_elems = elem_count * 2;
-
-    // 校验：栈中元素个数 ≥ 要打包的个数
-    assert(op_stack.size() > total_elems && "Stack underflow in MAKE_DICT: insufficient elements");
-
-    // 栈中顺序是 [key1, val1, key2, val2,...]（栈底→栈顶）
-    std::vector<std::pair<
-        dep::BigInt, std::pair< model::Object*, model::Object* >
-    >> elem_list;
     elem_list.reserve(elem_count);
 
     for (size_t i = 0; i < elem_count; ++i) {
-        model::Object* value = fetch_stack_top();
-        if (!value) {
-            throw NativeFuncError("DictMadeError", "Null value in dictionary entry");
-        }
-        value->make_ref();
+        model::Object* elem = get_and_pop_stack_top(); // 弹出
+        elem_list.push_back(elem);
+    }
+    std::ranges::reverse(elem_list); // 恢复原序
 
-        model::Object* key = fetch_stack_top();
-        key->make_ref();
+    auto* list_obj = new model::List(elem_list);      // 内部为每个元素 make_ref
+    push_to_stack(list_obj);
 
-        // 修使用create_list创建临时参数，保存指针以便释放
+    // 释放栈对每个元素的引用（get_and_pop_stack_top 不释放引用）
+    for (auto e : elem_list) e->del_ref();
+}
+
+void Vm::make_dict(size_t len) {
+    size_t elem_count = len;
+    const size_t total_elems = elem_count * 2;
+    assert(op_stack.size() >= total_elems);
+
+    std::vector<std::pair<dep::BigInt, std::pair<model::Object*, model::Object*>>> elem_list;
+    elem_list.reserve(elem_count);
+
+    for (size_t i = 0; i < elem_count; ++i) {
+        model::Object* value = get_and_pop_stack_top(); // 弹出 value
+        model::Object* key = get_and_pop_stack_top();   // 弹出 key
+
+        // 计算哈希
         call_method(key, "__hash__", {});
-        model::Object* hash_obj = fetch_stack_top();
-
+        model::Object* hash_obj = get_and_pop_stack_top();
         auto* hashed_int = dynamic_cast<model::Int*>(hash_obj);
         if (!hashed_int) {
-            // 异常时提前释放临时对象，避免泄漏
+            // 异常：释放已弹出的对象和哈希对象
             hash_obj->del_ref();
             key->del_ref();
             value->del_ref();
             throw NativeFuncError("TypeError", "__hash__ must return an integer");
         }
-        assert(hashed_int);
-
         elem_list.emplace_back(hashed_int->val, std::pair{key, value});
+        hash_obj->del_ref();   // 释放哈希结果
 
-        // 释放临时参数和哈希对象
-        hash_obj->del_ref();
+        // 释放栈对 key/value 的引用（get_and_pop_stack_top 不释放）
+        key->del_ref();
+        value->del_ref();
     }
 
-    auto* dict_obj = new model::Dictionary(dep::Dict(elem_list));
-    dict_obj->make_ref();
+    auto* dict_obj = new model::Dictionary(dep::Dict(elem_list)); // 内部为 key/value make_ref
     push_to_stack(dict_obj);
 }
 }

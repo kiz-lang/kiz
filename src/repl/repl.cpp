@@ -174,11 +174,11 @@ void Repl::eval_and_print(const std::string& cmd, const size_t startline) {
         vm_.set_main_module(module);
     } else {
         if (!ir) throw KizStopRunningSignal("No ir for run" );
-        vm_.set_and_exec_curr_code(ir);
+        vm_.reset_global_code(ir);
     }
 
     DEBUG_OUTPUT("repl print");
-    auto stack_top = vm_.fetch_stack_top();
+    auto stack_top = vm_.get_stack_top();
     if (stack_top != nullptr) {
         if (not dynamic_cast<model::Nil*>(stack_top) and should_print) {
             std::cout << vm_.obj_to_debug_str(stack_top) << std::endl;

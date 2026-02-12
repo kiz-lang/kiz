@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "vm.hpp"
 #include "../models/models.hpp"
 #include "opcode/opcode.hpp"
@@ -12,12 +14,8 @@ bool Vm::is_true(model::Object* obj) {
         return false;
     }
 
-    // 先创建列表，管理所有权
-    auto temp_list = model::create_list({});
-    temp_list->del_ref(); // 移交所有权给 args_list，计数平衡
-
     call_method(obj, "__bool__", {});
-    auto result = fetch_stack_top();
+    auto result = get_stack_top();
     bool ret = is_true(result);
 
     result->del_ref();
@@ -81,6 +79,8 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
             ));
 
         // 创建新调用帧
+        func->make_ref();
+        func->code->make_ref();
         auto new_frame = new CallFrame{
             .name = func->name,
 
@@ -94,11 +94,9 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
 
             .try_blocks{},
             .iters{},
-            .dyn_vars = dep::HashMap<model::Object*>(), // load slow
 
             .curr_error = nullptr,
         };
-        auto old_frame = call_stack.back();
         op_stack.resize(op_stack.size() + func->code->locals_count);
 
         // 储存self
@@ -119,12 +117,12 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
                     param_val = args_list->val[i];  // 从列表取参数
                 }
 
-                assert(param_val != nullptr);
-
+                assert(param_val);
+                param_val->make_ref();
                 op_stack[new_frame->bp + i] = param_val;
             }
 
-            call_stack.emplace_back(std::move(new_frame));
+            call_stack.emplace_back(new_frame);
             return;
         }
 
@@ -148,7 +146,6 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
     } else {
         try {
             const auto callable = get_attr(func_obj, "__call__");
-            DEBUG_OUTPUT("call callable obj");
             handle_call(callable, args_obj, func_obj);
         } catch (NativeFuncError& e) {
             throw NativeFuncError("TypeError", "try to call an uncallable object");
@@ -159,7 +156,8 @@ void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Ob
 void Vm::call_function(model::Object* func_obj, std::vector<model::Object*> args, model::Object* self) {
     size_t old_call_stack_size = call_stack.size();
 
-    auto temp_args = model::create_list(args);
+    auto temp_args = new model::List(std::move(args));
+    temp_args->make_ref();
     handle_call(func_obj, temp_args, self);
     temp_args->del_ref();
 
@@ -186,7 +184,7 @@ void Vm::call_function(model::Object* func_obj, std::vector<model::Object*> args
             execute_unit(curr_inst); // 调用VM的指令执行核心方法
         } catch (const NativeFuncError& e) {
             // 原生函数执行错误，抛出异常
-            instruction_throw(e.name, e.msg);
+            forward_to_handle_throw(e.name, e.msg);
             return;
         } catch (const KizStopRunningSignal& e) {
             // 模块执行中触发停止信号，终止执行
@@ -211,8 +209,8 @@ void Vm::call_method(model::Object* obj, const std::string& attr_name, std::vect
         "__neg__", "__eq__", "__gt__", "__lt__", "__str__", "__dstr__",
         "__bool__", "__getitem__", "__setitem__", "contains", "__next__", "__hash__"
     };
-    const bool attr_is_magic = std::ranges::find(magic_methods, attr_name) != magic_methods.end();
-    if (!attr_is_magic or obj == model::based_obj) {
+    const bool is_magic = std::ranges::find(magic_methods, attr_name) != magic_methods.end();
+    if (!is_magic or obj == model::based_obj) {
         call_function(get_attr(obj, attr_name), args, obj);
         return;
     }
@@ -233,9 +231,9 @@ std::string Vm::obj_to_str(model::Object* for_cast_obj) {
     } catch (NativeFuncError& e) {
         call_method(for_cast_obj, "__dstr__", {});
     }
-    auto res = fetch_stack_top();
+    auto res = get_stack_top();
     std::string val = model::cast_to_str(res)->val;
-
+    pop_stack_top();
     return val;
 }
 
@@ -247,7 +245,7 @@ std::string Vm::obj_to_debug_str(model::Object* for_cast_obj) {
     } catch (NativeFuncError& e) {
         call_method(for_cast_obj, "__str__", {});
     }
-    auto res = fetch_stack_top();
+    auto res = get_stack_top();
     std::string val = model::cast_to_str(res)->val;
     return val;
 }

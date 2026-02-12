@@ -18,7 +18,6 @@ model::Module* IRGenerator::gen_mod(
         module_name,
         module_code
     );
-    module_obj->make_ref();
     return module_obj;
 }
 
@@ -279,16 +278,15 @@ void IRGenerator::gen_fn_decl(NamedFuncDeclStmt* func) {
         code_chunks.back().upvalues,
         code_chunks.back().var_names.size()
     );
-    code_obj->make_ref();
     code_chunks.pop_back();
 
     // 生成函数体IR
+    code_obj->make_ref();
     const auto fn = new model::Function(
         func->name,
         code_obj,
         func->params.size()
     );
-    fn->make_ref();
     fn->has_rest_params = func->has_rest_params;
 
 

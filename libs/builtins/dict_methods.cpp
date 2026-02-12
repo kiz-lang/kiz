@@ -7,7 +7,7 @@ dep::BigInt hash_object(Object* key_obj) {
     // hash对象
     kiz::Vm::call_method(key_obj, "__hash__", {});
 
-    const auto result = kiz::Vm::fetch_stack_top();
+    const auto result = kiz::Vm::get_stack_top();
 
     const auto result_int = dynamic_cast<Int*>(result);
     if (!result_int)
@@ -109,7 +109,7 @@ Object* dict_str(Object* self, const List* args) {
         ++i;
     }
     result += "}";
-    return create_str(result);
+    return new String(result);
 }
 
 Object* dict_dstr(Object* self, const List* args) {
@@ -125,7 +125,7 @@ Object* dict_dstr(Object* self, const List* args) {
         ++i;
     }
     result += "}";
-    return create_str(result);
+    return new String(result);
 }
 
 }  // namespace model

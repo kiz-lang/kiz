@@ -34,29 +34,33 @@ std::string Vm::main_file_path;
 std::vector<model::Object*> Vm::const_pool {};
 dep::HashMap<model::Object*> Vm::std_modules {};
 
+StackRef::~StackRef() { if (obj) obj->del_ref(); }
 
 Vm::Vm(const std::string& file_path_) {
     main_file_path = file_path_;
     DEBUG_OUTPUT("entry builtin functions...");
-    model::based_obj->make_ref();
-    model::based_list->make_ref();
-    model::based_function->make_ref();
-    model::based_dict->make_ref();
-    model::based_int->make_ref();
-    model::based_bool->make_ref();
-    model::based_nil->make_ref();
-    model::based_str->make_ref();
-    model::based_native_function->make_ref();
-    model::based_error->make_ref();
-    model::based_decimal->make_ref();
-    model::based_module->make_ref();
-    model::stop_iter_signal->make_ref();
-    model::based_code_object->make_ref();
+    model::unique_nil->mark_as_important();
+    model::unique_false->mark_as_important();
+    model::unique_true->mark_as_important();
+
+    model::based_obj->mark_as_important();
+    model::based_list->mark_as_important();
+    model::based_function->mark_as_important();
+    model::based_dict->mark_as_important();
+    model::based_int->mark_as_important();
+    model::based_bool->mark_as_important();
+    model::based_nil->mark_as_important();
+    model::based_str->mark_as_important();
+    model::based_native_function->mark_as_important();
+    model::based_error->mark_as_important();
+    model::based_decimal->mark_as_important();
+    model::based_module->mark_as_important();
+    model::stop_iter_signal->mark_as_important();
+    model::based_code_object->mark_as_important();
 
     for (dep::BigInt i = 0; i < 201; i+= 1) {
         auto int_obj = new model::Int{i};
-        int_obj->make_ref(); // 创建
-        int_obj->make_ref(); // 小整数池持有
+        int_obj->mark_as_important();
         small_int_pool[i.to_unsigned_long_long()] = int_obj;
     }
     entry_builtins();
@@ -64,8 +68,7 @@ Vm::Vm(const std::string& file_path_) {
 }
 
 void Vm::set_main_module(model::Module* src_module) {
-    DEBUG_OUTPUT("loading module...");
-    // 合法性校验：防止空指针访问
+    // 合法性校验
     assert(src_module != nullptr);
     assert(src_module->code != nullptr);
 
@@ -75,6 +78,8 @@ void Vm::set_main_module(model::Module* src_module) {
 
     // 创建模块级调用帧（CallFrame）：模块是顶层执行单元，对应一个顶层调用帧
     op_stack.resize(src_module->code->locals_count);
+    src_module->make_ref(); // owner
+    src_module->code->make_ref();
     auto module_call_frame = new CallFrame{
         .name = src_module->path,
 
@@ -88,7 +93,6 @@ void Vm::set_main_module(model::Module* src_module) {
 
         .try_blocks{},
         .iters{},
-        .dyn_vars = dep::HashMap<model::Object*>(), // load slow
 
         .curr_error = nullptr,
     };
@@ -120,8 +124,6 @@ void Vm::exec_curr_code() {
         const Instruction& curr_inst = curr_frame->code_object->code[curr_frame->pc];
         try {
             // std::cout << "current instr: " << opcode_to_string(curr_inst.opc) << std::endl;
-            execute_unit(curr_inst);
-            // std::cout << "finish handle instr: " << opcode_to_string(curr_inst.opc) << std::endl;
             // std::cout << "Stack:" << std::endl;
             // size_t j = 0;
             // for (auto st_mem: op_stack) {
@@ -132,8 +134,20 @@ void Vm::exec_curr_code() {
             //     ++j;
             // }
             // std::cout << "==End==" << std::endl;
+            execute_unit(curr_inst);
+            // std::cout << "finish handle instr: " << opcode_to_string(curr_inst.opc) << std::endl;
+            // std::cout << "Stack:" << std::endl;
+            // j = 0;
+            // for (auto st_mem: op_stack) {
+            //     if (st_mem)
+            //         std::cout << j << ": " << st_mem->debug_string() << std::endl;
+            //     else
+            //         std::cout << j << ": " << "<nullptr>" << std::endl;
+            //     ++j;
+            // }
+            // std::cout << "==End==" << std::endl;
         } catch (NativeFuncError& e) {
-            instruction_throw(e.name, e.msg);
+            forward_to_handle_throw(e.name, e.msg);
         }
 
         if (curr_inst.opc != Opcode::JUMP && curr_inst.opc != Opcode::JUMP_IF_FALSE &&
@@ -143,25 +157,40 @@ void Vm::exec_curr_code() {
         }
     }
 
-    DEBUG_OUTPUT("call stack length: " + std::to_string(call_stack.size()));
 }
 
-CallFrame* Vm::fetch_curr_frame() {
+CallFrame* Vm::get_frame() {
     if ( !call_stack.empty() ) {
         return call_stack.back();
     }
     throw KizStopRunningSignal("Unable to fetch current frame");
 }
 
-model::Object* Vm::fetch_stack_top() {
-    if (op_stack.empty()) return nullptr; // 先判断空栈
+model::Object* Vm::get_stack_top() {
+    if(op_stack.empty()) throw KizStopRunningSignal("Unable to fetch top of stack");
     auto stack_top = op_stack.back();
-    if (stack_top) {
-        stack_top->del_ref();
-    }
+    if (!stack_top) throw KizStopRunningSignal("Top of stack is free");
+    return stack_top;
+}
+
+void Vm::pop_and_del_ref() {
+    auto stack_top = op_stack.back();
+    stack_top->del_ref();
+    op_stack.pop_back();
+}
+
+model::Object* Vm::get_and_pop_stack_top() {
+    if(op_stack.empty()) throw KizStopRunningSignal("Unable to fetch top of stack");
+    auto stack_top = op_stack.back();
+    if (!stack_top) throw KizStopRunningSignal("Top of stack is free");
     op_stack.pop_back();
     return stack_top;
 }
+
+void Vm::pop_stack_top() {
+    op_stack.pop_back();
+}
+
 
 void Vm::push_to_stack(model::Object* obj) {
     if (obj == nullptr) return;
@@ -169,24 +198,26 @@ void Vm::push_to_stack(model::Object* obj) {
     op_stack.push_back(obj);
 }
 
-void Vm::set_and_exec_curr_code(model::CodeObject* code_object) {
+void Vm::reset_global_code(model::CodeObject* code_object) {
     assert(code_object != nullptr);
     assert(!call_stack.empty());
+    assert(call_stack.size() == 1);
 
     // 获取全局模块级调用帧（REPL 共享同一个帧）
-    auto* curr_frame = call_stack.back();
+    auto frame = call_stack.back();
     // 对原有CodeObject调用del_ref(), 释放CallFrame的持有权
-    if (curr_frame->code_object) {
-        curr_frame->code_object->del_ref();
+    if (frame->code_object) {
+        frame->code_object->del_ref();
     }
 
-    curr_frame->code_object = code_object;
-    curr_frame->pc = 0;
+    code_object->make_ref();
+    frame->code_object = code_object;
+    frame->pc = 0;
     exec_curr_code();
 }
 
 std::string Vm::get_attr_name_by_idx(const size_t idx) {
-    auto frame = fetch_curr_frame();
+    auto frame = get_frame();
     return frame->code_object->attr_names[idx];
 }
 

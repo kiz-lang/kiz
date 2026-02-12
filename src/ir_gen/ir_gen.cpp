@@ -29,11 +29,11 @@ size_t IRGenerator::get_or_add_name(std::vector<std::string>& names, const std::
 
 // 辅助函数：获取常量在curr_const中的索引（不存在则添加）
 size_t IRGenerator::get_or_add_const(model::Object* obj) {
+    obj->mark_as_important();
     const auto it = std::find(Vm::const_pool.begin(), Vm::const_pool.end(), obj);
     if (it != Vm::const_pool.end()) {
         return std::distance(Vm::const_pool.begin(), it);
     }
-    obj->make_ref();
     Vm::const_pool.emplace_back(obj);
     return Vm::const_pool.size() - 1;
 }
@@ -75,7 +75,6 @@ model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
         code_chunks.back().upvalues,
         code_chunks.back().var_names.size()
     );
-    code_obj->make_ref();
     code_chunks.pop_back();
 
     return code_obj;
@@ -87,11 +86,10 @@ model::Int* IRGenerator::make_int_obj(const NumberExpr* num_expr) {
     auto the_num = dep::BigInt(num_expr->value);
     if (the_num >= 0 and the_num < 201) {
         auto obj = Vm::small_int_pool[the_num.to_unsigned_long_long()];
-        obj->make_ref();
         return obj;
     }
 
-    auto int_obj = model::create_int( the_num );
+    auto int_obj = new model::Int( the_num );
     return int_obj;
 }
 
@@ -99,14 +97,14 @@ model::Int* IRGenerator::make_int_obj(const NumberExpr* num_expr) {
 model::Decimal* IRGenerator::make_decimal_obj(const DecimalExpr* dec_expr) {
     DEBUG_OUTPUT("making rational object...");
     auto decimal_str = dep::Decimal(dec_expr->value);
-    auto decimal_obj = model::create_decimal(decimal_str);
+    auto decimal_obj = new model::Decimal(decimal_str);
     return decimal_obj;
 }
 
 model::String* IRGenerator::make_string_obj(const StringExpr* str_expr) {
     DEBUG_OUTPUT("making string object...");
     assert(str_expr);
-    auto str_obj = model::create_str(str_expr->value);
+    auto str_obj = new model::String(str_expr->value);
     return str_obj;
 }
 

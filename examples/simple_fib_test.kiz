@@ -6,5 +6,5 @@ fn fib(n)
 end
 
 start = now();
-print("fib(28) =", fib(28))
+print("fib(30) =", fib(30))
 print("using:", now()-start)

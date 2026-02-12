@@ -4,19 +4,10 @@
 #include "../models/models.hpp"
 #include "builtins/include/builtin_functions.hpp"
 #include "builtins/include/builtin_methods.hpp"
-#define __RegBuiltinOneFunctions(name) \
-    builtins.insert(#name, model::create_nfunc(builtin::##name, #name));
-#define __RegBuiltinFunctions(...) __RegBuiltinOneFunctions(__VA_ARGS__)
 
 namespace kiz {
 
 void Vm::entry_builtins() {
-    // __RegBuiltinFunctions(
-    //     print, input, ischild, create, now, get_refc, breakpoint,
-    //     cmd, help, delattr, setattr, getattr, hasattr,
-    //     range, type_of, debug_str
-    // );
-
     model::based_bool->attrs_insert("__parent__", model::based_obj);
     model::based_int->attrs_insert("__parent__", model::based_obj);
     model::based_nil->attrs_insert("__parent__", model::based_obj);
@@ -38,7 +29,7 @@ void Vm::entry_builtins() {
     }));
 
     model::based_obj->attrs_insert("__str__", model::create_nfunc([](const model::Object* self, const model::List* args) -> model::Object* {
-        return model::create_str("<Object at " + model::ptr_to_string(self) + ">");
+        return new model::String("<Object at " + model::ptr_to_string(self) + ">");
     }));
 
     model::based_obj->attrs_insert("__getitem__", model::create_nfunc([](const model::Object* self, const model::List* args) -> model::Object* {
@@ -174,26 +165,26 @@ void Vm::entry_builtins() {
     }));
 
     model::based_error->attrs_insert("__str__", model::create_nfunc([](model::Object* self, model::List* args) {
-        return model::create_str("Error");
+        return new model::String("Error");
     }));
 
     model::based_module->attrs_insert("__str__", model::create_nfunc([](model::Object* self, model::List* args){
         auto self_mod = dynamic_cast<model::Module*>(self);
-        return model::create_str(
+        return new model::String(
             "<Module: path='" + self_mod->path + "', attr=" + self_mod->attrs.to_string() + ", at " + ptr_to_string(self_mod) + ">"
         );
     }));
 
     model::based_function->attrs_insert("__str__", model::create_nfunc([](model::Object* self, model::List* args){
        auto self_fn = dynamic_cast<model::Function*>(self);
-       return model::create_str(
+       return new model::String(
            "<Function: path='" + self_fn->name + "', argc=" + std::to_string(self_fn->argc) + " at " + ptr_to_string(self_fn) + ">"
        );
    }));
 
     model::based_native_function->attrs_insert("__str__", model::create_nfunc([](model::Object* self, model::List* args){
        auto self_nfn = dynamic_cast<model::NativeFunction*>(self);
-       return model::create_str(
+       return new model::String(
         "<NativeFunction" +
             (self_nfn->name.empty()
             ? ""

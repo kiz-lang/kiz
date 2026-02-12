@@ -70,6 +70,7 @@ struct UpValue {
 
 class Object {
     std::atomic<size_t> refc_ = 0;
+    bool is_important = false; // 重要对象不参与make_refc/del_refc
 public:
     dep::HashMap<Object*> attrs;
 
@@ -79,6 +80,10 @@ public:
         List, Dictionary, CodeObject, Function,
         NativeFunction, Module, Error
     };
+
+    void mark_as_important() {
+        is_important = true;
+    }
 
     // 获取实际类型的虚函数
     [[nodiscard]] virtual ObjectType get_type() const {
@@ -90,15 +95,14 @@ public:
     }
     
     void make_ref() {
-        // std::cout << "adding refc: " << this->debug_string() << " " << refc_  << " -> " << refc_+1 << std::endl;
+        if (is_important) return;
         refc_.fetch_add(1, std::memory_order_relaxed);
     }
     void del_ref() {
-        // std::cout << "deling refc: " << this->debug_string() << " " << refc_  << " -> " << refc_-1 << std::endl;
+        if (is_important) return;
         const size_t old_ref = refc_.fetch_sub(1, std::memory_order_acq_rel);
-        //
         if (old_ref == 1) {
-            std::cout << "deling object " << this->debug_string() << std::endl;
+            // std::cout << "deling object " << this->debug_string() << std::endl;
             delete this;
         }
     }
@@ -113,11 +117,11 @@ public:
         return "<Object at " + ptr_to_string(this) + ">";
     }
 
-    Object () {}
+    Object () = default;
 
     virtual ~Object() {
         auto kv_list = attrs.to_vector();
-        for (auto& obj : kv_list | std::views::values) {
+        for (const auto& obj : kv_list | std::views::values) {
             if (obj) obj->del_ref();
         }
     }
@@ -176,12 +180,12 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit Module(std::string name, CodeObject *code) : path(std::move(name)), code(code) {
-        attrs.insert("__parent__", based_module);
+        attrs_insert("__parent__", based_module);
         code->make_ref();
     }
 
     explicit Module(std::string name) : path(std::move(name)) {
-        attrs.insert("__parent__", based_module);
+        attrs_insert("__parent__", based_module);
     }
 
     [[nodiscard]] std::string debug_string() const override {
@@ -207,7 +211,7 @@ public:
     explicit Function(std::string name, CodeObject *code, const size_t argc
     ) : name(std::move(name)), code(code), argc(argc) {
         code->make_ref();
-        attrs.insert("__parent__", based_function);
+        attrs_insert("__parent__", based_function);
     }
 
     [[nodiscard]] std::string debug_string() const override {
@@ -216,6 +220,9 @@ public:
 
     ~Function() override {
         code->del_ref();
+        for (auto fv : free_vars) {
+            if (fv) fv->del_ref();
+        }
     }
 };
 
@@ -228,7 +235,7 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit NativeFunction(std::function<Object*(Object*, List*)> func) : func(std::move(func)) {
-        attrs.insert("__parent__", based_native_function);
+        attrs_insert("__parent__", based_native_function);
     }
     [[nodiscard]] std::string debug_string() const override {
     return "<NativeFunction" +
@@ -248,10 +255,10 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit Int(dep::BigInt val) : val(std::move(val)) {
-        attrs.insert("__parent__", based_int);
+        attrs_insert("__parent__", based_int);
     }
     explicit Int() : val(dep::BigInt(0)) {
-        attrs.insert("__parent__", based_int);
+        attrs_insert("__parent__", based_int);
     }
     [[nodiscard]] std::string debug_string() const override {
         return val.to_string();
@@ -265,14 +272,14 @@ public:
     static constexpr ObjectType TYPE = ObjectType::List;
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
-    explicit List(std::vector<Object*> val) : val(std::move(val)) {
-        for (auto v: val) {
+    explicit List(std::vector<Object*> val_){
+        for (auto v: val_) {
             v->make_ref();
+            val.push_back(v);
         }
-        attrs.insert("__parent__", based_list);
-        auto zero = new Int(0);
-        zero->make_ref();
-        attrs.insert("__current_index__", zero);
+        attrs_insert("__parent__", based_list);
+        auto zero = kiz::Vm::small_int_pool[0];
+        attrs_insert("__current_index__", zero);
     }
     [[nodiscard]] std::string debug_string() const override {
         std::string result = "[";
@@ -303,7 +310,7 @@ public:
     static constexpr ObjectType TYPE = ObjectType::Decimal;
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
     explicit Decimal(dep::Decimal val) : val(std::move(val)) {
-        attrs.insert("__parent__", based_decimal);
+        attrs_insert("__parent__", based_decimal);
     }
     [[nodiscard]] std::string debug_string() const override {
         return val.to_string();
@@ -318,10 +325,9 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit String(std::string val) : val(std::move(val)) {
-        attrs.insert("__parent__", based_str);
-        auto zero = new Int(0);
-        zero->make_ref();
-        attrs.insert("__current_index__", zero);
+        attrs_insert("__parent__", based_str);
+        auto zero = kiz::Vm::small_int_pool[0];
+        attrs_insert("__current_index__", zero);
     }
     [[nodiscard]] std::string debug_string() const override {
         return '"'+val+'"';
@@ -339,10 +345,10 @@ public:
             if (kv_pair.first) kv_pair.first->make_ref();
             if (kv_pair.second) kv_pair.second->make_ref();
         }
-        attrs.insert("__parent__", based_dict);
+        attrs_insert("__parent__", based_dict);
     }
     explicit Dictionary() {
-        attrs.insert("__parent__", based_dict);
+        attrs_insert("__parent__", based_dict);
     }
 
     [[nodiscard]] std::string debug_string() const override {
@@ -362,7 +368,7 @@ public:
 
     ~Dictionary() override {
         auto kv_list = val.to_vector();
-        for (auto& [_, kv_pair] : kv_list) {
+        for (auto& kv_pair : kv_list | std::views::values) {
             if (kv_pair.first) kv_pair.first->del_ref();
             if (kv_pair.second) kv_pair.second->del_ref();
         }
@@ -377,7 +383,7 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit Bool(const bool val) : val(val) {
-        attrs.insert("__parent__", based_bool);
+        attrs_insert("__parent__", based_bool);
     }
     [[nodiscard]] std::string debug_string() const override {
         return val ? "True" : "False";
@@ -391,7 +397,7 @@ public:
     [[nodiscard]] ObjectType get_type() const override { return TYPE; }
 
     explicit Nil() : Object() {
-        attrs.insert("__parent__", based_nil);
+        attrs_insert("__parent__", based_nil);
     }
     [[nodiscard]] std::string debug_string() const override {
         return "Nil";
@@ -406,11 +412,11 @@ public:
 
     explicit Error(std::vector<std::pair<std::string, err::PositionInfo>> p) {
         positions = std::move(p);
-        attrs.insert("__parent__", based_error);
+        attrs_insert("__parent__", based_error);
     }
 
     explicit Error() {
-        attrs.insert("__parent__", based_error);
+        attrs_insert("__parent__", based_error);
     }
 
     [[nodiscard]] std::string debug_string() const override {
@@ -423,15 +429,12 @@ inline auto unique_false = new Bool(false);
 inline auto unique_true = new Bool(true);
 
 inline auto load_nil() {
-    unique_nil->make_ref();
     return unique_nil;
 }
 inline auto load_false() {
-    unique_false->make_ref();
     return unique_false;
 }
 inline auto load_true() {
-    unique_true->make_ref();
     return unique_true;
 }
 
@@ -445,42 +448,12 @@ inline auto load_stop_iter_signal() {
     return stop_iter_signal;
 }
 
-inline auto create_int(dep::BigInt n) {
-    auto o = new Int(std::move(n));
-    o->make_ref();
-    return o;
-}
-
-inline auto create_str(std::string n) {
-    auto o = new String(std::move(n));
-    o->make_ref();
-    return o;
-}
-
-inline auto create_decimal(dep::Decimal n) {
-    auto o = new Decimal(std::move(n));
-    o->make_ref();
-    return o;
-}
-
-inline auto create_list(std::vector<Object*> n) {
-    auto o = new List(std::move(n));
-    o->make_ref();
-    return o;
-}
-
 inline auto create_nfunc(const std::function<Object*(Object*, List*)>& func, const std::string& name="<unnamed>") {
     auto o = new NativeFunction(func);
-    o->make_ref();
     o->name = name;
     return o;
 }
 
-inline auto create_module(std::string name) {
-    auto m = new Module(std::move(name));
-    m->make_ref();
-    return m;
-}
 
 inline auto cast_to_int(Object* o) {
     auto obj = dynamic_cast<Int*>(o);
@@ -513,15 +486,15 @@ inline auto cast_to_list(Object* o) {
     return obj;
 }
 
-inline auto copy_or_ref(Object* obj) -> Object* {
+inline auto copy_if_mutable(Object* obj) -> Object* {
     switch (obj->get_type()) {
 
     case Object::ObjectType::List: {
         std::vector<Object*> new_val;
         for (auto val : cast_to_list(obj)->val) {
-            new_val.push_back(copy_or_ref(val));
+            new_val.push_back(copy_if_mutable(val));
         }
-        return create_list(std::move(new_val));
+        return new List(std::move(new_val));
     }
 
     case Object::ObjectType::Dictionary: {
@@ -533,16 +506,14 @@ inline auto copy_or_ref(Object* obj) -> Object* {
         for (auto& [_, kv_pair] : dict_obj->val.to_vector()) {
             // key是hashable value, 也就是不可变对象, 可以引用传递, 应该没有神人为可变对象重载__hash__方法的
             elem_list.emplace_back(_, std::pair{
-                kv_pair.first, copy_or_ref(kv_pair.second)
+                kv_pair.first, copy_if_mutable(kv_pair.second)
             });
         }
         auto new_dict_obj = new Dictionary(dep::Dict(elem_list));
-        new_dict_obj->make_ref();
         return new_dict_obj;
     }
 
     default: {
-        obj->make_ref();
         return obj;
     }
 

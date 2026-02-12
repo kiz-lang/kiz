@@ -56,9 +56,19 @@ struct CallFrame {
     
     std::vector<TryFrame> try_blocks;
     std::vector<model::Object*> iters;
-    dep::HashMap<model::Object*> dyn_vars; // load slow
 
     model::Object* curr_error;
+};
+
+class StackRef {
+    model::Object* obj;
+public:
+    explicit StackRef(model::Object* o) : obj(o) {}
+    ~StackRef(); // 在vm.cpp中实现
+    StackRef(const StackRef&) = delete;
+    StackRef(StackRef&& other)  noexcept : obj(other.obj) { other.obj = nullptr; }
+    [[nodiscard]] model::Object* get() const { return obj; }
+    model::Object* release() { auto p = obj; obj = nullptr; return p; }
 };
 
 class Vm {
@@ -84,12 +94,15 @@ public:
     ///| 核心执行循环
     static void set_main_module(model::Module* src_module);
     static void exec_curr_code();
-    static void set_and_exec_curr_code(model::CodeObject* code_object);
+    static void reset_global_code(model::CodeObject* code_object);
     static void execute_unit(const Instruction& instruction);
 
     ///| 栈操作
-    static CallFrame* fetch_curr_frame();
-    static model::Object* fetch_stack_top();
+    static CallFrame* get_frame();
+    static model::Object* get_stack_top();
+    static model::Object* get_and_pop_stack_top();
+    static void pop_stack_top();
+    static void pop_and_del_ref();
     static void push_to_stack(model::Object* obj);
     static std::string get_attr_name_by_idx(size_t idx);
 
@@ -118,7 +131,7 @@ public:
     static bool is_true(model::Object* obj);
     static std::string obj_to_str(model::Object* for_cast_obj);
     static std::string obj_to_debug_str(model::Object* for_cast_obj);
-    static void instruction_throw(const std::string& name, const std::string& content);
+    static void forward_to_handle_throw(const std::string& name, const std::string& content);  // 转发到handle_throw函数
 
     static auto make_pos_info() -> std::vector<std::pair<std::string, err::PositionInfo>>;
     static void make_list(size_t len);

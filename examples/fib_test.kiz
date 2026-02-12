@@ -13,5 +13,5 @@ fn fib(n)
     return a
 end
 
-print("fib(28) =", fib(28))
+print("fib(30) =", fib(30))
 print("using", now()-start, "ns")

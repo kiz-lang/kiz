@@ -12,11 +12,11 @@ Object* nil_eq(Object* self, const List* args) {
 
 // Nil.__hash__
 Object* nil_hash(Object* self, const List* args) {
-    return create_int(0);
+    return kiz::Vm::small_int_pool[0];
 }
 
 Object* nil_str(Object* self, const List* args) {
-    return create_str("Nil");
+    return new model::String("Nil");
 }
 
 }  // namespace model
