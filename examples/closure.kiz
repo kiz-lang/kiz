@@ -1,0 +1,10 @@
+fn outer
+    text = "kiz"
+    fn inner
+        print(f"Hello from {text}")
+    end
+    return inner
+end
+
+i = outer()
+i()

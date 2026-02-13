@@ -1,19 +1,21 @@
-n = 0
+global_var = 0
 fn a
-    m = 0
+    nonlocal_var = 0
     fn b
         fn c
-            nonlocal m = 100
-            global n = 99
-            aa = 0
-            bb = ""
+            print(nonlocal_var)
+            nonlocal nonlocal_var = 100
+            global global_var = 99
+            local1 = 0
+            local2 = ""
+            print(nonlocal_var)
             breakpoint()
         end
         c()
     end
     b()
-    print(m)
+    print(nonlocal_var)
 end
 a()
 
-print(n)
+print(global_var)

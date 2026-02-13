@@ -61,6 +61,19 @@ void IRGenerator::gen_block(const BlockStmt* block) {
             // 变量声明：生成初始化表达式IR + 存储变量指令
             const auto var_decl = dynamic_cast<NonlocalAssignStmt*>(stmt.get());
             gen_expr(var_decl->expr.get()); // 生成初始化表达式IR
+
+            // 可能已经注册入free_vars
+            auto may_be_free_it = std::ranges::find(code_chunks.back().free_names, var_decl->name);
+            if (may_be_free_it != code_chunks.back().free_names.end()) {
+                size_t name_idx = std::distance(code_chunks.back().free_names.begin(), may_be_free_it);
+                code_chunks.back().code_list.emplace_back(
+                    Opcode::SET_NONLOCAL,
+                    std::vector{name_idx},
+                    stmt->pos
+                );
+                break;
+            }
+
             size_t i = 0;
             size_t name_idx = 0;
             bool find_free_var_it = false;
@@ -74,7 +87,6 @@ void IRGenerator::gen_block(const BlockStmt* block) {
                 ++i;
             }
             if (find_free_var_it) {
-                gen_expr(var_decl->expr.get());
                 code_chunks.back().free_names.push_back(var_decl->name);
                 code_chunks.back().upvalues.push_back({i, name_idx});
                 code_chunks.back().code_list.emplace_back(

@@ -391,8 +391,9 @@ void Vm::execute_unit(const Instruction& instruction) {
     }
 
     case Opcode::SET_NONLOCAL: {
-        auto upvalue = call_stack.back()->code_object->upvalues[ instruction.opn_list[0] ];
-        auto frame = call_stack[ call_stack.size() - upvalue.distance_from_curr];
+        auto idx_of_upvalue = instruction.opn_list[0];
+        auto upvalue = call_stack.back()->code_object->upvalues[ idx_of_upvalue ];
+        auto frame = call_stack[ call_stack.size() - upvalue.distance_from_curr - 1]; // 区别于CREATE_CLOSURE指令, 这里在函数中要多减一
         size_t loc_based = frame->bp;
 
         auto value = get_and_pop_stack_top();
@@ -406,6 +407,11 @@ void Vm::execute_unit(const Instruction& instruction) {
 
         op_stack[loc_based + upvalue.idx] = new_val;
         value->del_ref();
+
+        // 更新闭包
+        if (auto f = dynamic_cast<model::Function*>(call_stack.back()->owner)) {
+            f->free_vars[idx_of_upvalue] = new_val;
+        }
         break;
     }
 

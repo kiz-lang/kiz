@@ -53,13 +53,25 @@ void IRGenerator::gen_expr(Expr* expr) {
                 expr->pos
             );
         } else {
+            // 可能已经注册入free_vars
+            auto may_be_free_it = std::ranges::find(code_chunks.back().free_names, ident->name);
+            if (may_be_free_it != code_chunks.back().free_names.end()) {
+                size_t name_idx = std::distance(code_chunks.back().free_names.begin(), may_be_free_it);
+                code_chunks.back().code_list.emplace_back(
+                    Opcode::LOAD_FREE_VAR,
+                    std::vector{name_idx},
+                    expr->pos
+                );
+                break;
+            }
+
             size_t i = 0;
             size_t name_idx = 0;
             bool find_free_var_it = false;
-            for (auto& code_chuck : code_chunks | std::views::reverse) {
-                auto free_it = std::ranges::find(code_chuck.var_names, ident->name);
-                if (free_it != code_chuck.var_names.end()) {
-                    name_idx = std::distance(code_chuck.var_names.begin(), free_it);
+            for (auto& code_chunk : code_chunks | std::views::reverse) {
+                auto free_it = std::ranges::find(code_chunk.var_names, ident->name);
+                if (free_it != code_chunk.var_names.end()) {
+                    name_idx = std::distance(code_chunk.var_names.begin(), free_it);
                     find_free_var_it = true;
                     break;
                 }
