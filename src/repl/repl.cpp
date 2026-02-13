@@ -168,7 +168,10 @@ void Repl::eval_and_print(const std::string& cmd, const size_t startline) {
         dynamic_cast<kiz::ExprStmt*>(ast->statements.back().get())
     )   should_print = true;
 
-    const auto ir = ir_gen.gen(std::move(ast));
+
+    const auto ir = ir_gen.gen(std::move(ast), last_global_var_names_);
+    last_global_var_names_ = ir_gen.get_global_var_names();
+
     if (vm_.call_stack.empty()) {
         const auto module = kiz::IRGenerator::gen_mod(file_path, ir);
         vm_.set_main_module(module);

@@ -39,13 +39,16 @@ class IRGenerator {
     const std::string& file_path;
 public:
     explicit IRGenerator(const std::string& file_path) : file_path(file_path) {}
-    model::CodeObject* gen(std::unique_ptr<BlockStmt> ast_into);
+    model::CodeObject* gen(std::unique_ptr<BlockStmt> ast_into, const std::vector<std::string>& global_var_names_into = {});
 
     static size_t get_or_add_name(std::vector<std::string>& names, const std::string& name);
     static size_t get_or_add_const(model::Object* obj);
     [[nodiscard]] static model::Module* gen_mod(
         const std::string& module_name, model::CodeObject* module_code
     );
+    std::vector<std::string> get_global_var_names();
+
+private:
     void gen_for(ForStmt* for_stmt);
     void gen_try(TryStmt* try_stmt);
     void gen_block(const BlockStmt* block);
@@ -59,7 +62,6 @@ public:
     void gen_object_stmt(ObjectStmt* stmt);
     void gen_while(WhileStmt* while_stmt);
 
-protected:
     static model::Int* make_int_obj(const NumberExpr* num_expr);
     static model::Decimal* make_decimal_obj(const DecimalExpr* dec_expr);
     static model::String* make_string_obj(const StringExpr* str_expr);

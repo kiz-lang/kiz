@@ -38,7 +38,7 @@ size_t IRGenerator::get_or_add_const(model::Object* obj) {
     return Vm::const_pool.size() - 1;
 }
 
-model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
+model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into, const std::vector<std::string>& global_var_names_into) {
     ast = std::move(ast_into);
     DEBUG_OUTPUT("generating...");
     // 检查AST根节点有效性（默认模块根为BlockStmt）
@@ -48,24 +48,27 @@ model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
     // 处理模块顶层节点
     // 创建函数体
     code_chunks.emplace_back(CodeChunk());
+    if (!global_var_names_into.empty()) {
+        code_chunks.back().var_names = global_var_names_into;
+    }
     gen_block(root_block);
 
-    std::cout << "== IR Result ==" << std::endl;
-    size_t i = 0;
-    for (const auto& inst : code_chunks.back().code_list) {
-        std::string opn_text;
-        for (auto opn : inst.opn_list) {
-            opn_text += std::to_string(opn) + ",";
-        }
-        std::cout << i << ":" << opcode_to_string(inst.opc) << " " << opn_text << std::endl;
-        ++i;
-    }
-    std::cout << "== End ==" << std::endl;
-    std::cout << "== VarName Result ==" << std::endl;
-    for (auto n: code_chunks.back().var_names) {
-        std::cout << n << "\n";
-    }
-    std::cout << "== End ==" << std::endl;
+    // std::cout << "== IR Result ==" << std::endl;
+    // size_t i = 0;
+    // for (const auto& inst : code_chunks.back().code_list) {
+    //     std::string opn_text;
+    //     for (auto opn : inst.opn_list) {
+    //         opn_text += std::to_string(opn) + ",";
+    //     }
+    //     std::cout << i << ":" << opcode_to_string(inst.opc) << " " << opn_text << std::endl;
+    //     ++i;
+    // }
+    // std::cout << "== End ==" << std::endl;
+    // std::cout << "== VarName Result ==" << std::endl;
+    // for (auto n: code_chunks.back().var_names) {
+    //     std::cout << n << "\n";
+    // }
+    // std::cout << "== End ==" << std::endl;
 
     auto code_obj = new model::CodeObject(
         code_chunks.back().code_list,
@@ -75,7 +78,6 @@ model::CodeObject* IRGenerator::gen(std::unique_ptr<BlockStmt> ast_into) {
         code_chunks.back().upvalues,
         code_chunks.back().var_names.size()
     );
-    code_chunks.pop_back();
 
     return code_obj;
 }
@@ -106,6 +108,11 @@ model::String* IRGenerator::make_string_obj(const StringExpr* str_expr) {
     assert(str_expr);
     auto str_obj = new model::String(str_expr->value);
     return str_obj;
+}
+
+std::vector<std::string> IRGenerator::get_global_var_names() {
+    assert(!code_chunks.empty());
+    return code_chunks.back().var_names;
 }
 
 } // namespace kiz

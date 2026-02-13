@@ -34,7 +34,7 @@ class Repl {
 
     kiz::Vm vm_;
 
-
+    std::vector<std::string> last_global_var_names_ = {};
 
     [[nodiscard]] size_t get_actual_lno() const {
         DEBUG_OUTPUT("Getting actual_lno, original multiline_start_: " << multiline_start_);
