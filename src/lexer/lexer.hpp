@@ -137,7 +137,6 @@ public:
         col_ = col_start;
     }
     std::vector<Token> tokenize();
-    void read_mstring();
     void read_string();
     void read_fstring();
     void read_num();
