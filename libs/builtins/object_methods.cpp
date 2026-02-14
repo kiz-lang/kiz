@@ -39,12 +39,13 @@ Object* range_next(Object* self, const List* args) {
     dep::BigInt& end_int = cast_to_int(kiz::Vm::get_attr_current(self, "end"))->val;
 
     Int* current = cast_to_int(kiz::Vm::get_attr_current(self, "current"));
-    auto old_val = current->val;
-    current->val = current->val + step_int;
-    if (current->val > end_int) {
-        current->val = start_int;
+
+    if (current->val >= end_int) {
         return load_stop_iter_signal();
     }
+
+    auto old_val = current->val;
+    current->val = current->val + step_int;
     return new Int(old_val);
 }
 
