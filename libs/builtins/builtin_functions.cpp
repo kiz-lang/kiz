@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
-#include <bits/this_thread_sleep.h>
+#include <thread>
 
 #include "../../src/models/models.hpp"
 #include "../deps/u8str.hpp"
@@ -344,6 +344,53 @@ model::Object* sleep(model::Object* self, const model::List* args) {
     auto time = model::cast_to_int(get_one_arg(args)) ->val.to_unsigned_long_long();
     std::this_thread::sleep_for(std::chrono::milliseconds(time));
     return model::load_nil();
+}
+
+model::Object* open(model::Object* self, const model::List* args) {
+    kiz::Vm::assert_argc(2, args);
+    auto path = cast_to_str(args->val[0]) ->val;
+    auto mode = cast_to_str(args->val[1]) ->val;
+
+    auto real_path = kiz::Vm::get_exe_abs_dir() / kiz::Vm::get_current_file_path().parent_path() / path;
+
+    std::ios_base::openmode open_mode = std::ios_base::binary;
+    if (mode == "r") {
+        open_mode |= std::ios_base::in;          // 只读
+        if (!std::filesystem::is_regular_file(real_path)) {
+            throw NativeFuncError("PathError", "File not found: " + real_path.string());
+        }
+    } else if (mode == "w") {
+        open_mode |= std::ios_base::out | std::ios_base::trunc;  // 写入（覆盖）
+    } else if (mode == "a") {
+        open_mode |= std::ios_base::in | std::ios_base::out | std::ios_base::app;
+    } else if (mode == "r+") {
+        open_mode |= std::ios_base::in | std::ios_base::out;     // 读写
+        if (!std::filesystem::is_regular_file(real_path)) {
+            throw NativeFuncError("PathError", "File not found: " + real_path.string());
+        }
+    } else if (mode == "w+") {
+        open_mode |= std::ios_base::in | std::ios_base::out | std::ios_base::trunc;
+    } else {
+        throw NativeFuncError("ModeError", "Invalid file mode: " + mode);
+    }
+
+    // 移除全局文件存在性校验（仅在只读/读写模式下单独校验）
+    auto file_stream = new std::fstream();
+    file_stream->open(real_path.string(), open_mode);
+
+    if (!file_stream->is_open()) {
+        delete file_stream;
+        throw NativeFuncError("FileOpenError", "Failed to open file: " + real_path.string());
+    }
+
+    // 创建 FileHandleObject 并关联文件句柄
+    auto fh_obj = new model::FileHandle();
+    fh_obj->attrs_insert("__parent__", model::based_file_handle);
+    fh_obj->attrs_insert("mode", new model::String(mode));
+    fh_obj->attrs_insert("path", new model::String(real_path.string()));
+    fh_obj->file_handle = file_stream; // 核心：存储文件句柄
+
+    return fh_obj;
 }
 
 }

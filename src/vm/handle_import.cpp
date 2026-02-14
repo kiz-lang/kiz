@@ -93,7 +93,7 @@ fs::path get_exe_abs_path() {
 /**
  * @brief 跨平台获取EXE可执行文件的绝对路径所在目录
 */
-fs::path get_exe_abs_dir() {
+fs::path kiz::Vm::get_exe_abs_dir() {
     return get_exe_abs_path().parent_path();
 }
 
@@ -139,13 +139,7 @@ void Vm::handle_import(const std::string& module_path) {
         return;
     }
 
-    fs::path current_file_path;
-    for (const auto& frame: call_stack) {
-        if (frame->owner->get_type() == model::Object::ObjectType::Module) {
-            const auto m = dynamic_cast<model::Module*>(frame->owner);
-            current_file_path = m->path;
-        }
-    }
+    fs::path current_file_path = get_current_file_path();
 
     bool file_in_path = false;
     fs::path actually_found_path = "";

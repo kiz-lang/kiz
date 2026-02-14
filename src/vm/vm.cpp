@@ -253,4 +253,16 @@ void Vm::assert_argc(const std::vector<size_t>& argcs, const model::List* args) 
     ));
 }
 
+std::filesystem::path Vm::get_current_file_path() {
+    std::filesystem::path current_file_path;
+    if (main_file_path == "<shell#>") return current_file_path;
+    for (const auto& frame: call_stack) {
+        if (frame->owner->get_type() == model::Object::ObjectType::Module) {
+            const auto m = dynamic_cast<model::Module*>(frame->owner);
+            current_file_path = m->path;
+        }
+    }
+    return current_file_path;
+}
+
 } // namespace kiz

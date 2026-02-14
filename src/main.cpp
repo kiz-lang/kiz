@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "kiz.hpp"
+#include "os/include/os_lib.hpp"
 #include "util/src_manager.hpp"
 
 /// 提供命令行帮助信息函数
@@ -116,23 +117,31 @@ void args_parser(const int argc, char* argv[]) {
         return;
     }
 
-    // 2个参数 : 仅处理 run <path>
-    if (argc == 3) {
-        const std::string cmd = argv[1];
-        if (cmd == "run") {
-            std::string path = argv[2];
-            run_file(path);
-        } else {
-            // 无效命令
-            std::cerr << "invalid command" << cmd << "\n";
-            show_help();
-        }
-        return;
-    }
+    const std::string first_cmd = argv[1];
+    int path_index = 0;
 
-    // 参数过多 : 提示错误并显示帮助
-    std::cerr << "too many arguments";
-    show_help();
+    if (first_cmd == "run") {
+        path_index = 2; // run命令后紧跟路径
+        // 如果参数数>3，收集路径后的所有参数
+        if (argc > 3) {
+            for (int i = 3; i < argc; ++i) {
+                os_lib::rest_argv.push_back(argv[i]);
+            }
+        }
+        std::string path = argv[path_index];
+        run_file(path);
+    } else {
+        // 非run命令，第一个参数是路径（如 kiz a.kiz 1 2）
+        path_index = 1;
+        // 如果参数数>2，收集路径后的所有参数
+        if (argc > 2) {
+            for (int i = 2; i < argc; ++i) {
+                os_lib::rest_argv.push_back(argv[i]);
+            }
+        }
+        std::string path = argv[path_index];
+        run_file(path);
+    }
 }
 
 void run_file(const std::string& path) {

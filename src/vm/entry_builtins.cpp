@@ -33,7 +33,7 @@ void Vm::entry_builtins() {
         return new model::String("<Object at " + model::ptr_to_string(self) + ">");
     }));
 
-    model::based_obj->attrs_insert("__getitem__", model::create_nfunc([](const model::Object* self, const model::List* args) -> model::Object* {
+    model::based_obj->attrs_insert("__getitem__", model::create_nfunc([](model::Object* self, const model::List* args) -> model::Object* {
         auto attr = builtin::get_one_arg(args);
         auto attr_str = dynamic_cast<model::String*>(attr);
         assert(attr_str != nullptr);
@@ -153,6 +153,12 @@ void Vm::entry_builtins() {
     model::based_str->attrs_insert("to_upper", model::create_nfunc(model::str_to_upper));
     model::based_str->attrs_insert("format", model::create_nfunc(model::str_format));
 
+    // FileHandle类型
+    model::based_file_handle->attrs_insert("read", model::create_nfunc(model::file_handle_read));
+    model::based_file_handle->attrs_insert("write", model::create_nfunc(model::file_handle_write));
+    model::based_file_handle->attrs_insert("readline", model::create_nfunc(model::file_handle_readline));
+    model::based_file_handle->attrs_insert("close", model::create_nfunc(model::file_handle_close));
+
 
     model::based_error->attrs_insert("__call__", model::create_nfunc([](model::Object* self, model::List* args) {
         assert( args->val.size() == 2);
@@ -218,6 +224,8 @@ void Vm::entry_builtins() {
     builtin_insert("debug_str", model::create_nfunc(builtin::debug_str, "debug_str"));
     builtin_insert("attr", model::create_nfunc(builtin::attr, "attr"));
     builtin_insert("sleep", model::create_nfunc(builtin::sleep, "sleep"));
+    builtin_insert("open", model::create_nfunc(builtin::open, "open"));
+
 
     builtin_insert("Object", model::based_obj);
     builtin_insert("Int", model::based_int);

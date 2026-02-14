@@ -1,9 +1,9 @@
 #pragma once
 #include "models/models.hpp"
 
-// inline char* rest_args[];
-
 namespace os_lib {
+
+inline std::vector<char*> rest_argv;
 
 model::Object* init_module(model::Object* self, const model::List* args);
 

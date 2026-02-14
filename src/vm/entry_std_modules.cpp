@@ -1,5 +1,4 @@
 #include "../models/models.hpp"
-#include "../libs/io/include/io_lib.hpp"
 #include "builtins/include/builtins_lib.hpp"
 #include "os/include/os_lib.hpp"
 
@@ -11,7 +10,6 @@ void Vm::entry_std_modules() {
         std_modules.insert(name, o);
     };
     std_modules_insert("builtins", model::create_nfunc(builtins_lib::init_module, "__init__"));
-    std_modules_insert("io", model::create_nfunc(io_lib::init_module, "__init__"));
     std_modules_insert("os", model::create_nfunc(os_lib::init_module, "__init__"));
 }
 } // namespace model

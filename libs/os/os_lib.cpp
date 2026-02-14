@@ -4,17 +4,15 @@
 #include <iostream>
 #include <string>
 #include <filesystem>
-#include <unistd.h>   // 用于 getcwd/chdir (Unix)
-#include <direct.h>  // 用于 _getcwd/_chdir (Windows)
-#include <stdlib.h>
 #include "builtins/include/builtin_functions.hpp"
 
 // os_lib.cpp 顶部（全局作用域）
 #ifdef _WIN32
+#include <direct.h>  // 用于 _getcwd/_chdir (Windows)
 // MinGW 下正确声明 _environ（无需 __declspec(dllimport)）
 extern char** _environ;
 #else
-// Linux/macOS 保持不变
+#include <unistd.h>   // 用于 getcwd/chdir (Unix)
 extern char** environ;
 #endif
 
@@ -23,7 +21,7 @@ namespace os_lib {
 model::Object* init_module(model::Object* self, const model::List* args) {
     auto mod = new model::Module("io_lib");
 
-    mod->attrs_insert("args", model::create_nfunc(get_args));
+    mod->attrs_insert("argv", model::create_nfunc(get_args));
     mod->attrs_insert("env", model::create_nfunc(get_env));
     mod->attrs_insert("exit", model::create_nfunc(exit_));
     mod->attrs_insert("cwd", model::create_nfunc(cwd));
@@ -36,7 +34,12 @@ model::Object* init_module(model::Object* self, const model::List* args) {
 }
 
 model::Object* get_args(model::Object* self, const model::List* args) {
-
+    kiz::Vm::assert_argc(0, args);
+    auto argv = new model::List({});
+    for (auto c: rest_argv) {
+        argv->val.push_back(new model::String(c));
+    }
+    return argv;
 }
 
 model::Object* get_env(model::Object* self, const model::List* args) {

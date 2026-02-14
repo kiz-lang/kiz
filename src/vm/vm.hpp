@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cassert>
+#include <filesystem>
 
 #include "../../deps/hashmap.hpp"
 
@@ -127,7 +128,8 @@ public:
     static void entry_std_modules();
 
     ///| @utils
-    static model::Object* get_attr(const model::Object* obj, const std::string& attr);
+    static model::Object* get_attr(model::Object* obj, const std::string& attr);
+    static model::Object* get_attr_current(model::Object* obj, const std::string& attr);
     static bool is_true(model::Object* obj);
     static std::string obj_to_str(model::Object* for_cast_obj);
     static std::string obj_to_debug_str(model::Object* for_cast_obj);
@@ -140,6 +142,10 @@ public:
     ///| @utils: 供builtins检查参数
     static void assert_argc(size_t argc, const model::List* args);
     static void assert_argc(const std::vector<size_t>& argcs, const model::List* args);
+
+    ///| @utils: 路径处理
+    static std::filesystem::path get_exe_abs_dir();
+    static std::filesystem::path get_current_file_path();
 };
 
 } // namespace kiz

@@ -134,11 +134,6 @@ std::vector<Token> Lexer::tokenize() {
                 }
                 next(); // 消费空白符
             }
-            else if ((current_char == 'M' || current_char == 'm') && char_pos_ + 1 < src_.size() &&
-                     src_[char_pos_ + 1] == '"') {
-                // 跨行字符串 M"/m"
-                curr_state_ = LexState::MultilineString;
-            }
             else if ((current_char == 'f' || current_char == 'F') &&
                     char_pos_ + 1 < src_.size() &&
                     (src_[char_pos_ + 1] == '"' || src_[char_pos_ + 1] == '\'')) {
@@ -266,12 +261,6 @@ std::vector<Token> Lexer::tokenize() {
                               lineno_, col_ - 1, lineno_, col_ - 1);
                 }
             }
-            break;
-        }
-
-        // 跨行字符串状态 M"/m"
-        case LexState::MultilineString: {
-            read_mstring();
             break;
         }
 

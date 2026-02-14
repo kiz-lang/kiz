@@ -22,7 +22,7 @@ bool Vm::is_true(model::Object* obj) {
     return ret;
 }
 
-model::Object* Vm::get_attr(const model::Object* obj, const std::string& attr_name) {
+model::Object* Vm::get_attr(model::Object* obj, const std::string& attr_name) {
     assert(obj != nullptr);
     const auto attr_it = obj->attrs.find(attr_name);
     auto parent_it = obj->attrs.find("__parent__");
@@ -35,10 +35,19 @@ model::Object* Vm::get_attr(const model::Object* obj, const std::string& attr_na
     }
 
     throw NativeFuncError("NameError",
-        "Undefined attribute '" + attr_name + "'" + " of " + obj->debug_string()
+        "Undefined attribute '" + attr_name + "'" + " of " + obj_to_debug_str(obj)
     );
 }
 
+model::Object* Vm::get_attr_current(model::Object* obj, const std::string& attr) {
+    const auto attr_it = obj->attrs.find(attr);
+    if (attr_it) {
+        return attr_it->value;
+    }
+    throw NativeFuncError("NameError",
+        "Undefined attribute '" + attr + "'" + " of current attributes table " + obj_to_debug_str(obj)
+    );
+}
 
 void Vm::handle_call(model::Object* func_obj, model::Object* args_obj, model::Object* self){
     assert(func_obj != nullptr);

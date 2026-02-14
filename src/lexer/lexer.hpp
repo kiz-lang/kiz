@@ -81,7 +81,6 @@ enum class LexState {
     Number,         // 数字/小数/科学计数法
     Operator,       // 双字符运算符（=>/->/==/!=等）
     String,         // 普通字符串（""/''）
-    MultilineString,// 跨行字符串（M"/m"）
     SingleComment,  // 单行注释（#）
     BlockComment,   // 块注释（/* */）
     FString,        // f-string 解析状态

@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <format>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <ranges>
@@ -420,6 +421,23 @@ public:
     [[nodiscard]] std::string debug_string() const override {
         return "Error";
     }
+};
+
+class FileHandle : public Object {
+public:
+    std::fstream* file_handle = nullptr;
+    bool is_closed = false;
+    explicit FileHandle() {
+        attrs_insert("__parent__", based_file_handle);
+    }
+    ~FileHandle() override {
+        is_closed = true;
+        if (file_handle) {
+            file_handle->close();
+            delete file_handle;
+        }
+    }
+
 };
 
 inline auto unique_nil = new Nil();

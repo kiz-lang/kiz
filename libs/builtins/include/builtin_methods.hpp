@@ -109,4 +109,15 @@ Object* list_count(Object* self, const List* args);
 Object* list_len(Object* self, const List* args);
 Object* list_filter(Object* self, const List* args);
 Object* list_join(Object* self, const List* args);
+
+// FileHandle类型
+Object* file_handle_read(Object* self, const List* args);
+Object* file_handle_write(Object* self, const List* args);
+Object* file_handle_readline(Object* self, const List* args);
+Object* file_handle_close(Object* self, const List* args);
+
+// Range类型
+Object* range_next(Object* self, const List* args);
+
+
 }
