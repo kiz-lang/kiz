@@ -1,9 +1,9 @@
 <div align="center">
 
-    <image src="https://pub-141831e61e69445289222976a15b6fb3.r2.dev/Image_to_url_V2/HEIF---imagetourl.cloud-1770101835669-relrd5.jpeg" width=160 height=220/>
+<image src="https://pub-141831e61e69445289222976a15b6fb3.r2.dev/Image_to_url_V2/HEIF---imagetourl.cloud-1770101835669-relrd5.jpeg" width=160 height=220/>
 
-    <img src="logo.svg" alt="Kiz Logo" style="width: 200px;">
-    <h1> kiz v0.7.0 🎉</h1>
+<img src="logo.svg" alt="Kiz Logo" style="width: 200px;">
+<h1> kiz v0.7.0 🎉</h1>
 </div>
 
 📌 **现状: 修复bug与预发布正式版本(2026.1)...**
