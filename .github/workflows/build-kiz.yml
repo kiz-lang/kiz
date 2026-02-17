@@ -1,4 +1,5 @@
 name: Auto Build Kiz (Multi-Platform)
+
 # 触发条件：push/PR到main/dev分支
 on:
   push:
@@ -8,83 +9,74 @@ on:
 
 jobs:
   build:
-    # 多平台矩阵：定义需要构建的系统
     strategy:
-      # 一个平台失败不影响其他平台构建
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        # 可选：指定架构，默认x64
         arch: [ x64 ]
 
-    # 运行环境从矩阵中读取
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.os }}-${{ matrix.arch }}
 
     steps:
-      # 拉取代码（含子模块，若有依赖子模块加submodules: true）
+      # 拉取代码
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: false
 
-      # 平台专属 - 安装依赖/配置编译环境
+      # Ubuntu 依赖
       - name: Install Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update -y
           sudo apt install -y g++ cmake make git build-essential
-          # 检查版本，确保C++20支持
           g++ --version
           cmake --version
 
+      # macOS 依赖
       - name: Install Dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew update
-          brew install cmake make git
-          # macOS自带clang，检查C++20支持
+          brew install cmake make
           clang++ --version
           cmake --version
 
-      - name: Setup MSVC/CMake (Windows)
+      # Windows 启用 MSVC 环境
+      - name: Setup MSVC (Windows)
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          # 配置Windows MSVC架构，与matrix.arch一致
           arch: ${{ matrix.arch }}
 
-      # 创建构建目录并执行cmake（跨平台通用，CMake自动识别系统）
+      # CMake 配置（统一 Release 模式）
       - name: CMake Configure
         run: |
-          mkdir -p build
+          mkdir build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release
 
-      # 平台专属 - 执行编译
+      # Linux/macOS 编译
       - name: Compile (Ubuntu/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           cd build
-          # 多核编译：Ubuntu用nproc，macOS用sysctl
-          make -j$(if [ ${{ matrix.os }} = 'ubuntu-latest' ]; then nproc; else sysctl -n hw.ncpu; fi)
+          make -j$(nproc || sysctl -n hw.ncpu)
 
+      # Windows 编译
       - name: Compile (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           cd build
-          # MSVC用msbuild编译，多核/m，指定Release版本
-          msbuild kiz.sln /m /p:Configuration=Release /p:Platform=x64
+          msbuild ALL_BUILD.vcxproj /m /p:Configuration=Release /p:Platform=x64
 
-      # 分平台上传构建产物（自动区分后缀：.exe/.elf）
+      # 关键修复：按平台正确上传 kiz.exe / kiz.elf
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          # 产物名：kiz-系统-架构
           name: kiz-${{ matrix.os }}-${{ matrix.arch }}
-          # 产物路径：CMake生成的可执行文件，跨平台通用路径
+          # 精确匹配各平台的实际输出路径
           path: |
             build/Release/kiz.exe
             build/kiz.elf
-          # 忽略不存在的文件（各平台仅生成对应后缀，避免报错）
-          if-no-files-found: warn
+          if-no-files-found: error

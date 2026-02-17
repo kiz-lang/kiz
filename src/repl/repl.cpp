@@ -135,7 +135,7 @@ void Repl::loop() {
     DEBUG_OUTPUT("start repl loop");
     while (is_running_) {
         try {
-            auto code = read(">>>"); // code 可能为多行
+            auto code = read(">>> "); // code 可能为多行
             DEBUG_OUTPUT("loop got input: " << code);
             auto old_code_iterator = err::SrcManager::opened_files.find(file_path);
             if (old_code_iterator != err::SrcManager::opened_files.end()) {
