@@ -85,6 +85,11 @@ std::unique_ptr<Stmt> Parser::parse_stmt() {
         return parse_if();  // 复用parse_if逻辑
     }
 
+    if (curr_tok.type == TokenType::TripleDot) {
+        skip_token("...");
+        return nullptr;
+    }
+
     // 解析while语句（适配end结尾）
     if (curr_tok.type == TokenType::While) {
         DEBUG_OUTPUT("parsing while");

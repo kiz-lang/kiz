@@ -21,7 +21,7 @@ void Vm::forward_to_handle_throw(const std::string& name, const std::string& con
         call_stack.back()->curr_error->del_ref();
     }
     err_obj->make_ref();
-    call_stack.back()->curr_error = err_obj; // 全局持有
+    call_stack.back()->curr_error = err_obj;
     handle_throw();
 }
 
@@ -35,7 +35,7 @@ void Vm::handle_throw() {
     auto err_msg_it = err->attrs.find("__msg__");
 
     if (!err_name_it or !err_msg_it) {
-        throw NativeFuncError("NameError",
+        throw KizStopRunningSignal(
             "Undefined attribute '__name__' '__msg__' of " + obj_to_debug_str(err) + " (when try to throw it)");
     }
     auto error_name = obj_to_str(err_name_it->value);
@@ -117,6 +117,7 @@ void Vm::handle_ensure() {
             execute_unit(curr_inst);
         } catch (NativeFuncError& e) {
             forward_to_handle_throw(e.name, e.msg);
+            continue;
         }
 
         ADVANCE_PC

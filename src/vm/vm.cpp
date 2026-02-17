@@ -151,6 +151,7 @@ void Vm::exec_curr_code() {
             // std::cout << "==End==" << std::endl;
         } catch (NativeFuncError& e) {
             forward_to_handle_throw(e.name, e.msg);
+            continue;
         }
         ADVANCE_PC
     }

@@ -193,7 +193,7 @@ void Vm::call_function(model::Object* func_obj, std::vector<model::Object*> args
         } catch (const NativeFuncError& e) {
             // 原生函数执行错误，抛出异常
             forward_to_handle_throw(e.name, e.msg);
-            return;
+            continue;
         }
 
         ADVANCE_PC

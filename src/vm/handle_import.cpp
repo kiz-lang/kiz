@@ -255,6 +255,7 @@ void Vm::handle_import(const std::string& module_path) {
         } catch (const NativeFuncError& e) {
             // 原生函数执行错误，抛出异常
             forward_to_handle_throw(e.name, e.msg);
+            continue;
         }
 
         ADVANCE_PC
