@@ -204,7 +204,7 @@ void Vm::call_function(model::Object* func_obj, std::vector<model::Object*> args
 void Vm::call_method(model::Object* obj, const std::string& attr_name, std::vector<model::Object*> args) {
     assert(obj != nullptr);
     auto parent_it = obj->attrs.find("__parent__");
-    std::vector<std::string> magic_methods = {
+    static const std::vector<std::string> magic_methods = {
         "__add__", "__sub__", "__mul__", "__div__", "__pow__", "__mod__",
         "__neg__", "__eq__", "__gt__", "__lt__", "__str__", "__dstr__",
         "__bool__", "__getitem__", "__setitem__", "contains", "__next__", "__hash__"
