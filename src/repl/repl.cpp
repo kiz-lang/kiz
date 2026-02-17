@@ -206,6 +206,9 @@ void Repl::eval_and_print(const std::string& cmd, const size_t startline) {
     }
 
     DEBUG_OUTPUT("repl print");
+    if (kiz::Vm::op_stack.empty()) {
+        return;
+    }
     auto stack_top = kiz::Vm::op_stack.back();
     if (stack_top != nullptr) {
         if (not dynamic_cast<model::Nil*>(stack_top) and should_print) {
