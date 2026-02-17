@@ -119,6 +119,10 @@ Repl::Repl(): is_running_(true), multiline_start_(1), vm_(file_path) {
     std::cout << "This is the kiz REPL " << "v" << KIZ_VERSION << "\n" << std::endl;
 }
 
+Repl::~Repl() {
+    vm_.handle_ensure();
+}
+
 std::string Repl::read(const std::string& prompt) {
     std::cout << Color::BRIGHT_MAGENTA << prompt << Color::RESET;
     std::cout.flush();
@@ -193,10 +197,12 @@ void Repl::eval_and_print(const std::string& cmd, const size_t startline) {
 
     if (kiz::Vm::call_stack.empty()) {
         const auto module = kiz::IRGenerator::gen_mod(file_path, ir);
-        kiz::Vm::set_main_module(module, true);
+        kiz::Vm::set_main_module(module);
+        kiz::Vm::exec_curr_code();
     } else {
         if (!ir) throw KizStopRunningSignal("No ir for run" );
         kiz::Vm::reset_global_code(ir);
+        kiz::Vm::exec_curr_code();
     }
 
     DEBUG_OUTPUT("repl print");

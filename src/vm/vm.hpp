@@ -99,7 +99,7 @@ public:
     explicit Vm(const std::string& file_path_);
 
     ///| 核心执行循环
-    static void set_main_module(model::Module* src_module, bool is_repl_env = false);
+    static void set_main_module(model::Module* src_module);
     static void exec_curr_code();
     static void reset_global_code(model::CodeObject* code_object);
     static void execute_unit(const Instruction& instruction);

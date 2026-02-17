@@ -55,7 +55,7 @@ class Repl {
 public:
     Repl();
 
-    ~Repl() = default;
+    ~Repl();
 
     std::string read(const std::string& prompt);
     void loop();

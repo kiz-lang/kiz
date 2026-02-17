@@ -158,6 +158,8 @@ void run_file(const std::string& path) {
         const auto ir = ir_gen.gen(std::move(ast));
         auto module = kiz::IRGenerator::gen_mod(path, ir);
         kiz::Vm::set_main_module(module);
+        kiz::Vm::exec_curr_code();
+        kiz::Vm::handle_ensure();
     } catch (KizStopRunningSignal& e) {
         if (std::string(e.what()).empty()) {
             std::exit(0);
