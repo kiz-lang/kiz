@@ -1,30 +1,5 @@
 <div align="center">
-<svg width="160" height="220" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#26c6da" />
-      <stop offset="100%" stop-color="#0288d1" />
-    </linearGradient>
-  </defs>
-  <path d="M 100 100 
-           L 412 100 
-           L 256 256 
-           L 412 412 
-           L 100 412 
-           Z" 
-        fill="url(#grad1)" />
-  <path d="M 100 100 
-           L 412 100 
-           L 256 256 
-           Z" 
-        fill="#26c6da" />
-  <path d="M 256 256 
-           L 412 412 
-           L 100 412 
-           Z" 
-        fill="#0288d1" />
-</svg>
-
+  <image src="https://pub-141831e61e69445289222976a15b6fb3.r2.dev/Image_to_url_V2/HEIF---imagetourl.cloud-1770101835669-relrd5.jpeg" width=160 height=220/>
 <h1> kiz v0.7.0 🎉</h1>
 </div>
 
