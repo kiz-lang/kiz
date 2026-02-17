@@ -171,7 +171,7 @@ void run_file(const std::string& path) {
             std::exit(0);
         }
         std::cout << Color::BOLD <<
-        Color::BRIGHT_RED << "A Panic! : " << Color::RESET
+        Color::BRIGHT_RED << "A Panic!" << Color::RESET
         << Color::WHITE << " : " << e.what() << Color::RESET << "\n";
         std::exit(1);
     }
