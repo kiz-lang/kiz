@@ -153,7 +153,7 @@ void Repl::loop() {
                 continue;
             }
             std::cout << Color::BOLD <<
-            Color::BRIGHT_RED << "A Panic! : " << Color::RESET
+            Color::BRIGHT_RED << "A Panic!" << Color::RESET
             << Color::WHITE << " : " << e.what() << Color::RESET << "\n";
             continue;
         }
