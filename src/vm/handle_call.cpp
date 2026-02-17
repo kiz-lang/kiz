@@ -207,13 +207,19 @@ void Vm::call_function(model::Object* func_obj, std::vector<model::Object*> args
 void Vm::call_method(model::Object* obj, const std::string& attr_name, std::vector<model::Object*> args) {
     assert(obj != nullptr);
     auto parent_it = obj->attrs.find("__parent__");
-    static const std::unordered_set<std::string_view, std::hash<std::string_view>> magic_methods = {
-        "__add__"sv, "__sub__"sv, "__mul__"sv, "__div__"sv, "__pow__"sv, "__mod__"sv,
-        "__neg__"sv, "__eq__"sv, "__gt__"sv, "__lt__"sv, "__str__"sv, "__dstr__"sv,
-        "__bool__"sv, "__getitem__"sv, "__setitem__"sv, "contains"sv, "__next__"sv, "__hash__"sv
+    static const std::unordered_set<std::string_view> magic_methods = {
+    std::string_view("__add__"), std::string_view("__sub__"),
+    std::string_view("__mul__"), std::string_view("__div__"),
+    std::string_view("__pow__"), std::string_view("__mod__"),
+    std::string_view("__neg__"), std::string_view("__eq__"),
+    std::string_view("__gt__"), std::string_view("__lt__"),
+    std::string_view("__str__"), std::string_view("__dstr__"),
+    std::string_view("__bool__"), std::string_view("__getitem__"),
+    std::string_view("__setitem__"), std::string_view("contains"),
+    std::string_view("__next__"), std::string_view("__hash__")
     };
 
-    const bool is_magic = magic_methods.contains(attr_name);
+    const bool is_magic = magic_methods.contains(std::string_view(attr_name));
     if (!is_magic) {
         call_function(get_attr(obj, attr_name), args, obj);
         return;
