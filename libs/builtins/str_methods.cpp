@@ -211,14 +211,14 @@ Object* str_len(Object* self, const List* args) {
     return new Int(dep::UTF8String(self_str->val).size());
 }
 
-Object* str_is_alaph(Object* self, const List* args) {
+Object* str_is_alpha(Object* self, const List* args) {
     auto self_str = cast_to_str(self);
     auto str = dep::UTF8String(self_str->val);
-    bool is_alaph = true;
+    bool is_alpha = true;
     for (const auto& c : str) {
-        if (!c.is_alpha()) is_alaph = false;
+        if (!c.is_alpha()) is_alpha = false;
     }
-    return load_bool(is_alaph);
+    return load_bool(is_alpha);
 }
 
 Object* str_is_digit(Object* self, const List* args) {
