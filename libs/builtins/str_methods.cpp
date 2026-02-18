@@ -132,7 +132,7 @@ Object* str_getitem(Object* self, const List* args) {
     auto index = idx_obj->val.to_unsigned_long_long();
     auto text = dep::UTF8String(self_str->val);
 
-    if (index < text.size()) {
+    if (index >= text.size()) {
         throw NativeFuncError("GetItemError", std::format("index {} out of range", index));
     }
     return new String( text[index] .to_string() );
