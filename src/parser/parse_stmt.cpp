@@ -334,18 +334,18 @@ std::unique_ptr<Stmt> Parser::parse_stmt() {
             DEBUG_OUTPUT("parsing set member");
             skip_token("=");
             auto value = parse_expression();
-            skip_end_of_ln();
 
             auto set_mem = std::make_unique<SetMemberStmt>(curr_token().pos, std::move(expr), std::move(value));
+            skip_end_of_ln();
             return set_mem;
         }
         if (expr->ast_type == AstType::GetItemExpr) {
             DEBUG_OUTPUT("parsing set item");
             skip_token("=");
             auto value = parse_expression();
-            skip_end_of_ln();
 
             auto set_item = std::make_unique<SetItemStmt>(curr_token().pos, std::move(expr), std::move(value));
+            skip_end_of_ln();
             return set_item;
         }
         // 非成员访问表达式后不能跟 =

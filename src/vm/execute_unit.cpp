@@ -259,7 +259,7 @@ void Vm::execute_unit(const Instruction& instruction) {
         std::string attr_name = get_attr_name_by_idx(instruction.opn_list[0]);
 
         if (std::ranges::find(builtins, obj.get()) != std::ranges::end(builtins)) {
-            throw NativeFuncError("SetattrError", "Cannot reset or add the attribute for builtin object");
+            throw NativeFuncError("SetattrError", "Cannot reset or add attribute for builtin object");
         }
 
         auto new_val = model::copy_if_mutable(attr_val.get());
