@@ -28,10 +28,10 @@ kiz-lang 是一门 **面向对象（原型链模型）、强类型+动态类型(
 - [快速开始](docs/快速开始.md)
 
 - [使用ai写kiz程序指南](docs/使用ai写kiz程序指南.md)
-- [从Python过渡到kiz](docs/从Python过渡到kiz.md]
+- [从Python过渡到kiz](docs/从Python过渡到kiz.md)
 - [语法特性速览](docs/语法特性速览.md)
 - [内置对象&库速览](docs/内置对象&库速览.md)
-- [kiz示例代码与讲解](docs/kiz示例代码与讲解.md$
+- [kiz示例代码与讲解](docs/kiz示例代码与讲解.md)
 
 - [从源代码构建kiz指南](docs/从源代码构建kiz指南.md)
 - [xmake构建教程](docs/xmake构建教程.md)
