@@ -85,11 +85,6 @@ std::unique_ptr<Stmt> Parser::parse_stmt() {
         return parse_if();  // 复用parse_if逻辑
     }
 
-    if (curr_tok.type == TokenType::TripleDot) {
-        skip_token("...");
-        return nullptr;
-    }
-
     // 解析while语句（适配end结尾）
     if (curr_tok.type == TokenType::While) {
         DEBUG_OUTPUT("parsing while");
@@ -353,7 +348,7 @@ std::unique_ptr<Stmt> Parser::parse_stmt() {
             "Invalid assignment target: expected member access");
     }
 
-    if (expr != nullptr) {
+    if (expr) {
         skip_end_of_ln();
         return std::make_unique<ExprStmt>(curr_token().pos, std::move(expr));
     }

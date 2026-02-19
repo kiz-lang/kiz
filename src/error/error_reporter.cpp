@@ -27,28 +27,35 @@ void context_printer(
     size_t src_col_start = pos.col_start;
     size_t src_col_end = pos.col_end;
 
-    std::string error_line = SrcManager::get_slice(src_path, src_line_start, src_line_end);
-    // 只有当切片范围无效时才显示错误信息，空行是有效的
+    // 获取错误代码片段（可能多行）
+    std::string error_slice = SrcManager::get_slice(src_path, src_line_start, src_line_end);
     bool is_valid_range = src_line_start >= 1 && src_line_end >= 1 && src_line_start <= src_line_end;
-    if (error_line.empty() && !is_valid_range) {
-        error_line = "[Can't slice the source file with "
+    if (error_slice.empty() && !is_valid_range) {
+        error_slice = "[Can't slice the source file with "
         + std::to_string(src_line_start) + "," + std::to_string(src_line_start)
         + "," + std::to_string(src_col_start) + "," + std::to_string(src_col_end) + "]";
     }
 
-    // 计算箭头位置：行号前缀长度 + 列偏移（列从1开始）
-    const std::string line_prefix = std::to_string(src_line_start) + " | ";
-    const size_t caret_offset = line_prefix.size() + (src_col_start - 1);
-    // 生成箭头（单个^或连续^，匹配错误列范围）
-    const std::string caret = std::string(src_col_end - src_col_start + 1, '^');
+    // 按行分割
+    std::vector<std::string> lines = SrcManager::splitlines(error_slice);
+    size_t line_count = lines.size();
 
-    // 格式化输出（颜色高亮+固定格式）
     std::cout << std::endl;
-    // 文件路径
     std::cout << Color::BRIGHT_BLUE << "File \"" << src_path << "\"" << Color::RESET << std::endl;
-    // 行号 + 错误代码行
-    std::cout << Color::WHITE << line_prefix << error_line << Color::RESET << std::endl;
-    // 箭头（对准错误列）
+
+    // 打印每一行，带行号前缀
+    for (size_t i = 0; i < line_count; ++i) {
+        size_t current_lineno = src_line_start + i;
+        std::string line_prefix = std::to_string(current_lineno) + " | ";
+        std::cout << Color::WHITE << line_prefix << lines[i] << Color::RESET << std::endl;
+    }
+
+    // 箭头定位在最后一行下方
+    // 计算最后一行的行号前缀长度
+    std::string last_line_prefix = std::to_string(src_line_end) + " | ";
+    size_t caret_offset = last_line_prefix.size() + (src_col_start - 1); // 使用起始列（通常等于结束列，因为是一个点）
+    // 生成箭头（长度基于列范围）
+    std::string caret = std::string(src_col_end - src_col_start + 1, '^');
     std::cout << std::string(caret_offset, ' ') << Color::BRIGHT_RED << caret << Color::RESET << std::endl;
 #endif
 }

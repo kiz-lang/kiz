@@ -23,6 +23,9 @@ public:
     ///| key: 文件路径, value: 文件内容
     static std::unordered_map<std::string, std::string> opened_files;
 
+    ///| 切片字符串
+    static std::vector<std::string> splitlines(const std::string& input);
+
     ///| 获取切片
     static std::string get_slice(const std::string& src_path, const size_t lineno_start, const size_t lineno_end);
 

@@ -12,6 +12,10 @@ namespace kiz {
 
 std::unique_ptr<Expr> Parser::parse_expression() {
     DEBUG_OUTPUT("parse the expression...");
+    if (curr_token().type == TokenType::TripleDot) {
+        skip_token("...");
+        return nullptr;
+    }
     return parse_and_or(); // 直接调用合并后的函数
 }
 

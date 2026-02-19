@@ -127,7 +127,6 @@ std::string Repl::get_whole_input(std::istream *is, std::ostream *os) {
             os->flush();
             input += '\n';
         } else if (ch == '\n') { // Enter结束输入
-            input += '\n';
             return input;
         } else {
             input += ch;
@@ -136,7 +135,10 @@ std::string Repl::get_whole_input(std::istream *is, std::ostream *os) {
 
     // 处理EOF（用户按Ctrl+D/Ctrl+Z）
     if (input.empty() && is->eof()) {
-        throw KizStopRunningSignal("EOF received, exit REPL");
+        std::cout << Color::BOLD <<
+            Color::BRIGHT_RED << "A Panic!" << Color::RESET
+            << Color::WHITE << " : " << "EOF received, exit REPL" << Color::RESET << "\n";
+        exit(1);
     }
 
     DEBUG_OUTPUT("final returns input (EOF): " << input);

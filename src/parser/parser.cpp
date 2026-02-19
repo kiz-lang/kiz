@@ -9,6 +9,7 @@
 #include "parser.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cerrno>
 #include <iostream>
 #include <memory>
@@ -41,7 +42,7 @@ Token Parser::skip_token(const std::string& want_skip) {
     }
 
     // 严格报错
-    err::error_reporter(file_path, curr_token().pos, "SyntaxError", "Invalid token/grammar");
+    err::error_reporter(file_path, curr_token().pos, "SyntaxError", "Invalid grammar: " + curr_token().text);
 }
 
 // curr_token实现
@@ -49,7 +50,9 @@ Token Parser::curr_token() const {
     if (curr_tok_idx_ < tokens_.size()) {
         return tokens_.at(curr_tok_idx_);
     }
-    return Token{TokenType::EndOfFile, "", 1, 1};
+    auto end_of_file = tokens_.back();
+    assert(end_of_file.type == TokenType::EndOfFile);
+    return end_of_file;
 }
 
 // skip_end_of_ln实现
@@ -113,14 +116,14 @@ std::unique_ptr<BlockStmt> Parser::parse(const std::vector<Token>& tokens) {
         while(curr_token().type == TokenType::EndOfLine) {
             skip_token(); // 直接跳过换行
         }
-        if (auto stmt = parse_stmt(); stmt != nullptr) {
+        if (curr_token().type == TokenType::EndOfFile) break;
+        if (auto stmt = parse_stmt()) {
             program_stmts.push_back(std::move(stmt));
         }
     }
 
     DEBUG_OUTPUT("end parsing");
-    constexpr err::PositionInfo pos = {1, 1, 1, 1};
-    return std::make_unique<BlockStmt>(pos, std::move(program_stmts));
+    return std::make_unique<BlockStmt>(tokens_.front().pos, std::move(program_stmts));
 }
 
 } // namespace kiz

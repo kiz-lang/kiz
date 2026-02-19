@@ -20,7 +20,11 @@
 
 #include "../kiz.hpp"
 
-std::vector<std::string> splitLines(const std::string& input) {
+namespace err {
+
+std::unordered_map<std::string, std::string> SrcManager::opened_files{};
+
+std::vector<std::string> SrcManager::splitlines(const std::string& input) {
     std::vector<std::string> lines;
     std::istringstream stream(input);
     std::string line;
@@ -32,16 +36,12 @@ std::vector<std::string> splitLines(const std::string& input) {
     return lines;
 }
 
-namespace err {
-
-std::unordered_map<std::string, std::string> SrcManager::opened_files{};
-
 ///| 从指定文件中提取指定行范围的内容（行号从1开始）
 std::string SrcManager::get_slice(const std::string& src_path, const size_t lineno_start, const size_t lineno_end) {
     DEBUG_OUTPUT("get slice");
     // 先获取完整文件内容（依赖缓存机制）
     std::string file_content = get_file_by_path(src_path);
-    std::vector<std::string> lines = splitLines(file_content);
+    std::vector<std::string> lines = splitlines(file_content);
 
     if (lineno_start > lines.size() or lineno_end > lines.size()) {
         std::cout <<  "[Warning] Invalid line range: start=" << lineno_start

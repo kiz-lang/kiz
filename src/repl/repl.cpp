@@ -16,19 +16,6 @@
 #include "color.hpp"
 #include "../error/src_manager.hpp"
 
-
-static std::vector<std::string> splitLines(const std::string& input) {
-    std::vector<std::string> lines;
-    std::istringstream stream(input);
-    std::string line;
-
-    while (std::getline(stream, line)) {
-        lines.push_back(line);
-    }
-
-    return lines;
-}
-
 namespace ui {
 
 const std::string Repl::file_path = "<shell#>";
@@ -51,18 +38,18 @@ void Repl::loop() {
     while (is_running_) {
         try {
             auto code = read(">>> ");
+            if (code.empty()) continue;
             auto old_code_iterator = err::SrcManager::opened_files.find(file_path);
             if (old_code_iterator != err::SrcManager::opened_files.end()) {
-                err::SrcManager::opened_files[file_path] = old_code_iterator->second + code;
+                err::SrcManager::opened_files[file_path] = old_code_iterator->second + "\n" + code;
             } else {
                 err::SrcManager::opened_files[file_path] = code;
             }
 
             size_t old_size = cmd_history_.size();
-            for (const auto& line: splitLines(code)) {
+            for (const auto& line: err::SrcManager::splitlines(code)) {
                 cmd_history_.push_back(line);
             }
-            if (code == "\n") continue;
             eval_and_print(code, old_size + 1);
         } catch (KizStopRunningSignal& e) {
             if (std::string(e.what()).empty()) {
