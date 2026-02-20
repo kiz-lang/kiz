@@ -1,0 +1,31 @@
+
+{ "title" : "恭喜恭喜",
+  "author": "陈歌辛",
+  "originalSinger": ["姚敏", "姚莉"],
+  "cover_singer": "卓依婷"
+  "subtitle": "身体要紧",
+  "subtitle_language": "kiz-lang"
+}
+
+object Mouth
+    fn say(this) 
+        return ["恭喜恭喜"] * 10
+    end
+end
+
+object Person
+    mouth = create(Mouth)
+end
+
+object Street
+    people = [create(People)] * 10
+end
+
+
+streets = [create(Street)] * 10
+for street in streets
+    for person in street.people
+        sentence = peoson.mouth.say().pop()
+        assert(sentence=="恭喜恭喜")
+    end
+end
