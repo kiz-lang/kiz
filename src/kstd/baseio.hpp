@@ -7,9 +7,27 @@
 #include <unistd.h>
 #include <limits.h>
 
+#define $assert(expr) \
+do { \
+    if (!(expr)) { \
+        printf("Assert failed: %s\n", #expr); \
+        __builtin_trap(); \
+    } \
+} while (0)
+
+#define $assert_eq(lhs, rhs) \
+do { \
+    auto&& _a = (lhs); \
+    auto&& _b = (rhs); \
+    if (!(_a == _b)) { \
+        printf("Assert equal failed: %s == %s\n", #lhs, #rhs); \
+        __builtin_trap(); \
+    } \
+
 namespace mem {
 template<typename T>
-[[nodiscard]] auto alloc(size_t count = 1) noexcept -> Ptr<T> {
+[[nodiscard]] 
+auto alloc(size_t count = 1) noexcept -> Ptr<T> {
     return Ptr(reinterpret_cast<T*>(malloc(sizeof(T) * count)));
 }
 
@@ -17,7 +35,8 @@ template<typename T>
 auto free(T* obj) noexcept -> void { ::free(obj); }
 
 template<typename T>
-[[nodiscard]] auto realloc(T* obj, size_t count) noexcept -> Ptr<T>{
+[[nodiscard]]
+auto realloc(T* obj, size_t count) noexcept -> Ptr<T>{
     return Ptr(reinterpret_cast<T*>(::realloc(obj, sizeof(T) * count)));
 }
 }
@@ -34,7 +53,7 @@ static void format_one(char* buf, size_t& off, size_t cap, const char* s) noexce
     if (!s) return;
     off += snprintf(buf + off, cap - off, "%s", s);
 }
-static void format_one(char* buf, size_t& off, size_t cap, const std::uint8_t* s) noexcept {
+static void format_one(char* buf, size_t& off, size_t cap, const uint8_t* s) noexcept {
     format_one(buf, off, cap, reinterpret_cast<const char*>(s));
 }
 static void format_one(char* buf, size_t& off, size_t cap, const Str& s) noexcept {
@@ -96,7 +115,7 @@ inline auto read_as_str(const char* path) noexcept -> Str {
     if (!p) { fclose(f); return {}; }
     fread(p, 1, len, f);
     fclose(f);
-    return sh::Str(sh::Ptr<std::uint8_t>(p), len);
+    return Str(Ptr<uint8_t>(p), len);
 }
 
 static auto normalize_segment(char* out, size_t cap, const char* s) noexcept {
