@@ -26,6 +26,36 @@ namespace kstd {
 #   define $Unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 
+#define $Assert(expr) \
+do { \
+    if (!(expr)) { \
+        printf("Assert failed: %s\n", #expr); \
+        __builtin_trap(); \
+    } \
+} while (0)
+
+#define $AssertEq(lhs, rhs) \
+do { \
+    auto&& _a = (lhs); \
+    auto&& _b = (rhs); \
+    if (!(_a == _b)) { \
+        printf("Assert equal failed: %s == %s\n", #lhs, #rhs); \
+        __builtin_trap(); \
+    } \
+} while(0)
+
+#define $Unimpl() \
+do { \
+    printf("Unimplemented code reached\n"); \
+    __builtin_trap(); \
+} while (0)
+
+#define Unreach() \
+do { \
+    printf("Unreachable code executed\n"); \
+    __builtin_trap(); \
+} while (0)
+
 #define $IsWin  defined(_WIN32) || defined(_WIN64)
 #define $IsLinux defined(__linux__)
 #define $IsMac  defined(__APPLE__)
