@@ -7,23 +7,6 @@
 #include <unistd.h>
 #include <limits.h>
 
-#define $assert(expr) \
-do { \
-    if (!(expr)) { \
-        printf("Assert failed: %s\n", #expr); \
-        __builtin_trap(); \
-    } \
-} while (0)
-
-#define $assert_eq(lhs, rhs) \
-do { \
-    auto&& _a = (lhs); \
-    auto&& _b = (rhs); \
-    if (!(_a == _b)) { \
-        printf("Assert equal failed: %s == %s\n", #lhs, #rhs); \
-        __builtin_trap(); \
-    } \
-
 namespace mem {
 template<typename T>
 [[nodiscard]] 
