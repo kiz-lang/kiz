@@ -7,5 +7,8 @@
 
 namespace kizc::api { 
 
+[[nodiscard]]
+auto emit_ir(Str txt) -> IRModule;
+
 }
                  
