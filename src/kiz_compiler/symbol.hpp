@@ -13,7 +13,7 @@ struct Symbol {
 
 struct StructItemInfo {
     Str name;
-    uint32_t typeid;
+    uint32_t tyid;
 };
 
 enum class TypeKind: uint8_t {
@@ -22,9 +22,9 @@ enum class TypeKind: uint8_t {
 };
 
 struct Type {
-    uint32_t typeid;
+    uint32_t tyid;
     TypeKind typekind;
-    Str typename;
+    Str tyname;
     union {
         uint32_t case_array_count;
         Vec<StructItemInfo> case_struct_info;
