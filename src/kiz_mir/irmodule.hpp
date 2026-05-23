@@ -1,51 +1,55 @@
 #pragma once
 
-// 基础类型大类
 enum class CTypeKind : uint8_t {
     Void,  Int,  UInt,
     LongLong,  ULongLong,
     Double,  Float, Char,
     Bool,  Ptr,  FuncPtr,
-    // Struct, 
 };
 
 struct CType {
+    union {
+        uint32_t case_ptr_ref;
+    } data;
+
     CTypeKind kind;
 
-    union TypeData {
-        uint8_t dummy;
-        uint32_t pointee_idx;
-        uint32_t struct_idx;
-        uint32_t func_sig_idx;
-    } extra;
-
-    bool is_const : 1;
-    bool is_volatile : 1;
+    bool is_const;
+    bool is_volatile;
 };
 
 struct FFIMetaData {
-    Vec<CType> params;
+    Vec<uint32_t> params;
     Vec<Str> param_names;
-    CType return_type;
+    uint32_t return_type;
     Str name;
 };
 
-struct ConstVal {
+enum class ConstType : uint8_t {
+    Int, Decimal, String
+};
 
+struct ConstVal {
+    union {
+        uint64_t case_int;
+        double case_decimal;
+        Str case_str;
+    } data;
+    ConstType kind;
 };
 
 
 enum class Terminator : uint8_t {
-    None,  Jmp,  JmpCond,
-    Ret,  Call,  Exit
+    Goto,  GotoIfFalse, GotoIfTrue,
+    Ret,  Call,
 };
 
-enum class OptLevel: uint8_t {
+enum class OptLevel : uint8_t {
     Low, Middle, High
 };
 
 struct FnMetaData {
-    Vec<BasicBlock> blocks;
+    Vec<uint32_t> blocks;
     Str name;
     uint32_t call_count;
     OptLevel opt_level;
@@ -53,14 +57,15 @@ struct FnMetaData {
 };
 
 struct BasicBlock {
-    uint32_t start_off;
-    uint32_t end_off;
+    uint32_t start_offset;
+    uint32_t end_offset;
     uint32_t exec_count;
 
     Vec<uint32_t> preds;
     Vec<uint32_t> succs;
 
     Terminator terminator;
+    uint8_t terminator_op_number;
     bool is_loop_head; 
     bool jit_compiled;
 };
@@ -70,8 +75,12 @@ struct IRModule {
     Vec<ConstVal> const_pool;
     Vec<FnMetaData> fn_pool;
     Vec<FFIMetaData> ffi_fns;
-
-    uint16_t max_reg;
+    Vec<CType> ffi_types;
+    Vec<BasicBlock> basic_blocks;
 
     Vec<Span> spans;
+
+    uint32_t entry_fn;
+
+    uint16_t max_reg;
 };
