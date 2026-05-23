@@ -5,11 +5,32 @@
 //|    |   <\__ \ || (_| |
 //|    |_|\_\___/\__\__,_|
 //|
-//|    A simple standard library for some useful tools.
 //|
-//|    Only require cstdlib !
+//|    A simple standard library for practical tools.
+//|
+//|    Only depends on C standard library
+//|
+//|    Core Type:
+//|        Ptr<T>: Wrapped raw pointer
+//|        Str: String slice type
+//|        Vec<T>: Dynamic array with dual memory management
+//|        Option<T>: Null-safe optional value
+//|        Result<T, E>: Error handling result type
+//|
+//|    SubModules:
+//|        mem: Memory alloc / realloc / free wrapper
+//|        shell: Formatted console print output
+//|        fs: File read & path manipulation
+//|
+//|    Feature:
+//|        Pure POD structure, compact memory footprint
+//|        Support external manual memory & auto realloc mode
+//|        Modern friendly API design
+//|        Cross platform & cross architecture compatible
+//|        Single header only, STB-style deployment
 //|
 //|    author: azhz<azhz1107cat@outlook.com>
+//|
 
 #pragma once
 
