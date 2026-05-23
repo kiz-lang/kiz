@@ -21,5 +21,9 @@ struct Type {
     TypeKind typekind;
 };
 
+struct SymbolTyble {
+    Vec<Symbol> symbols;
+};
+
 
 }
