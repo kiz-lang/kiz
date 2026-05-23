@@ -10,14 +10,7 @@
 //|    |_|\_\___/\__\__,_|
 //|
 
-namespace kstd {
-#include "ptr.hpp"
-#include "str.hpp"
-#include "vec.hpp"
-#include "option.hpp"
-#include "result.hpp"
-
-#define $VecForeach(i,v) for (auto i = 0; i < v.size(); ++1)
+#define $VecForeach(i,v) for (auto i = 0; i < v.size(); ++i)
 #ifdef _MSC_VER
 #   define $Likely(x) (x)
 #   define $Unlikely(x) (x)
@@ -50,7 +43,7 @@ do { \
     __builtin_trap(); \
 } while (0)
 
-#define Unreach() \
+#define $Unreach() \
 do { \
     printf("Unreachable code executed\n"); \
     __builtin_trap(); \
@@ -63,6 +56,14 @@ do { \
 #define $IsX64  defined(__x86_64__) || defined(_M_X64)
 #define $IsArm64 defined(__aarch64__) || defined(_M_ARM64)
 
+
+namespace kstd {
+
+#include "ptr.hpp"
+#include "str.hpp"
+#include "vec.hpp"
+#include "option.hpp"
+#include "result.hpp"
 using uint32 = uint32_t;
 using int32 = int32_t;
 using uint8 = uint8_t;
