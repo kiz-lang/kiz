@@ -1,0 +1,31 @@
+$Err(InvalidSyntax)        // 语法格式非法
+$Err(UnexpectedToken)       // 出现意料之外的词法记号
+$Err(MissingToken)          // 缺失必要语法符号
+$Err(InvalidInstruction)    // 非法指令
+$Err(BlockStructureBroken)  // 基本块结构损坏
+$Err(DuplicateSymbol)       // 符号重复定义
+$Err(UndefinedSymbol)       // 引用未定义符号
+$Err(TypeMismatch)          // 类型不匹配
+$Err(StackOverflow)         // 栈空间溢出
+$Err(MemoryOutOfBounds)     // 内存访问越界
+$Err(ReadOnlyWrite)         // 写入只读内存区域
+$Err(NullPointerDeref)      // 空指针解引用
+$Err(ExternalFuncNotFound)  // 找不到外部绑定函数
+$Err(InvalidBranchTarget)   // 非法跳转目标
+
+$Err(UndefinedLocalVariable) // 未定义本地变量
+$Err(UndefinedGlobalVariable)// 未定义全局变量
+$Err(VariableShadowWarning)  // 变量作用域遮蔽
+$Err(UninitializedVariable)  // 使用未初始化变量
+$Err(DuplicateLocalDefine)   // 局部变量重复定义
+$Err(InvalidVariableAccess)  // 非法变量访问
+$Err(OutOfScopeReference)    // 引用超出作用域变量
+
+$Err(ModuleImportFailed)      // 模块导入失败
+
+$Err(FunctionNotFound)       // 调用不存在函数
+$Err(ArgumentCountMismatch)  // 实参形参数量不匹配
+$Err(ArgumentTypeMismatch)   // 参数类型不匹配
+$Err(InvalidReturnPosition)  // 非法返回语句位置
+$Err(ReturnValueMismatch)    // 返回值类型不符声明
+$Err(CannotCallNonFunction)  // 调用非函数类型对象
