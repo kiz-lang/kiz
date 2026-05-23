@@ -6,6 +6,7 @@ class Parser {
     Lexer& lexer_;
     Codegen& codegen_;
     IRModule& irmodule_;
+    Vec<Str> import_paths_;
     Vec<SymbolTable> define_stack_;
 
     /// parse expr
@@ -31,8 +32,8 @@ class Parser {
     auto analyze_unary(Type l, Type r) -> Result<Type, ParserError>;
 
 public:
-    Parser(Lexer& l, Codegen& cg)
-    : lexer_(l), codegen_(cg), define_stack_({}), irmodule_({}) {}
+    Parser(Vec<Str> import_paths, Lexer& l, Codegen& cg)
+    : import_paths_(import_paths), lexer_(l), codegen_(cg), define_stack_({}), irmodule_({}) {}
     
     /// parse
     auto parse(Str txt) -> IRModule;
