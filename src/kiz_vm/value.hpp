@@ -20,14 +20,14 @@ struct Value {
         *reinterpret_cast<double*>(&res.data) = val;
         return res;
     }
-    static auto from_object(Object* obj) noexcept -> Value {
+    static auto from_object(Ptr<Object> obj) noexcept -> Value {
         return {ValueKind::ObjectPtr, reinterpret_cast<uint64_t>(obj)};
     }
     static auto from_func(uint64_t addr) noexcept -> Value {
         return {ValueKind::FunctionPtr, addr};
     }
-    static auto from_string(const char* str) noexcept -> Value {
-        return {ValueKind::String, reinterpret_cast<uint64_t>(str)};
+    static auto from_string(Str str) noexcept -> Value {
+        return {ValueKind::String, reinterpret_cast<uint64_t>(str.cstr())};
     }
 
     auto is_int() const noexcept -> bool {
