@@ -1,4 +1,4 @@
-#pargma once
+#pragma once
 
 struct Span {
     Str filepath;
