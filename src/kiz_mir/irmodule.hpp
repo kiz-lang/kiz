@@ -14,20 +14,29 @@ enum class Terminator : uint8_t {
     Ret,  Call,  Exit
 };
 
+struct FnMetaData {
+    Vec<BasicBlock> blocks;
+    uint32_t call_count;
+    bool jit_compiled;
+};
+
 struct BasicBlock {
     uint32_t start_off;
     uint32_t end_off;
+    uint32_t exec_count;
+
+    uint32_t pred;
+    uint32_t succ;
 
     Terminator terminator;
-
-    Vec<uint32_t> pred;
-    Vec<uint32_t> succ;
+    bool is_loop_head; 
+    bool jit_compiled;
 };
 
 struct IRModule {
     Vec<uint8_t> ins;
-    Vec<BasicBlock> blocks;
     Vec<ConstVal> const_pool;
+    Vec<FnMetaData> fn_pool;
     Vec<ExternalFn> external_fns;
 
     uint16_t max_reg;
