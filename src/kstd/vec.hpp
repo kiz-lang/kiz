@@ -18,8 +18,66 @@ struct Vec {
         : data(buf), len(0), cap(buf_cap)
     {}
 
+    template <typename... Args>
+    constexpr Vec(Args&&... args) noexcept
+    : data(nullptr), len(0), cap(0) {
+        constexpr size_t arg_cnt = sizeof...(Args);
+        if constexpr (arg_cnt > 0) {
+            reserve_maybe_realloc(static_cast<uint32_t>(arg_cnt));
+            (push_maybe_realloc(args), ...);
+        }
+    }
+
+    constexpr auto reserve_maybe_realloc(uint32_t new_cap) noexcept -> void {
+        if (new_cap <= cap) return;
+        auto old_ptr = data.get();
+        auto new_ptr = mem::realloc(old_ptr, static_cast<size_t>(new_cap));
+        if (!new_ptr) return;
+
+        data = new_ptr;
+        cap = new_cap;
+    }
+
+    constexpr auto push_maybe_realloc(const T& val) noexcept -> void {
+        if (len >= cap) {
+            uint32_t new_cap = (cap == 0) ? 4 : cap * 2;
+            reserve_maybe_realloc(new_cap);
+        }
+        if (len < cap) {
+            data[len++] = val;
+        }
+    }
+
+    template<typename... Args>
+    constexpr auto emplace_maybe_realloc(Args&&... args) noexcept -> T& {
+        if (len >= cap) {
+            uint32_t new_cap = cap == 0 ? 4 : cap * 2;
+            reserve_maybe_realloc(new_cap);
+        }
+        T& ref = data[len++];
+        new (&ref) T(args...);
+        return ref;
+    }
+
+    constexpr auto extend_maybe_realloc(const T* src, uint32_t count) noexcept -> void {
+        if (count == 0) return;
+        uint32_t need = len + count;
+        if (need > cap) {
+            uint32_t new_cap = cap;
+            while (new_cap < need)
+                new_cap = new_cap == 0 ? 4 : new_cap * 2;
+            reserve_maybe_realloc(new_cap);
+        }
+        memcpy(data.get() + len, src, sizeof(T) * count);
+        len += count;
+    }
+
+    constexpr auto extend_maybe_realloc(const Vec<T>& other) noexcept -> void {
+        extend_maybe_realloc(other.data.get(), other.len);
+    }
+
     /// 判空
-    constexpr auto is_empty() const noexcept -> bool {
+    constexpr auto isempty() const noexcept -> bool {
         return len == 0;
     }
 
@@ -37,23 +95,25 @@ struct Vec {
         }
     }
 
-    // 弹出末尾
+    /// 弹出末尾
     constexpr auto pop() noexcept -> void {
         if (len > 0) {
             len--;
         }
     }
 
-    // 清空长度（不释放内存）
+    /// 清空长度（不释放内存）
     constexpr auto clear() noexcept -> void {
         len = 0;
     }
 
     /// 下标读写
     constexpr auto operator[](uint32_t idx) noexcept -> T& {
+        $Assert(0 <= idx && idx < len);
         return data[idx];
     }
     constexpr auto operator[](uint32_t idx) const noexcept -> const T& {
+        $Assert(0 <= idx && idx < len);
         return data[idx];
     }
 
