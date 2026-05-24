@@ -34,6 +34,11 @@
 
 #pragma once
 
+#if defined(__cpp_modules)
+    module kstd;
+    export module kstd;
+#endif
+
 // ===--------
 // Useful Macros
 // ===---------
@@ -95,7 +100,13 @@ do { \
 // Kstd's POD and Function
 // ===---------
 
-namespace kstd {
+#if defined(__cpp_modules)
+    export namespace kstd
+#else
+    namespace kstd
+#endif
+
+{   // start namespace kstd
 
 // ===--------
 // Memory Tools
