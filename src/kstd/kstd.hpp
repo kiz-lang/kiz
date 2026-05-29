@@ -61,6 +61,7 @@
 //|    - $IsWindows()：编译期平台判断宏，仅在 Windows 系统下判定为真。
 //|    - $IsLinux()：编译期平台判断宏，仅在 Linux 系统下判定为真。
 //|    - $IsMac()：编译期平台判断宏，仅在 macOS 系统下判定为真。
+//|    - $NoMacro：删除上述宏。
 //|
 //|    库特性：
 //|        内部所有数据结构均采用标准 POD 设计，内存布局规整、占用体积极小，
@@ -602,3 +603,16 @@ struct Result {
 
 
 } // namespace kstd
+
+#if $NoMacro
+#   undef $ForeachVec
+#   undef $Likely
+#   undef $Unlikely
+#   undef $Assert
+#   undef $AssertEq
+#   undef $Unimplement
+#   undef $Unreachable
+#   undef $IsWindows
+#   undef $IsLinux
+#   undef $IsMac
+#endif
