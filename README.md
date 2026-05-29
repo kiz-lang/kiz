@@ -65,3 +65,9 @@ kiz-lang 是一门 **语法优雅**、面向对象（原型链模型）、动态
 
 ## 📧 联系
 kiz-lang@outlook.com
+
+## 贡献者
+<a href="https://github.com/kiz-lang/kizi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=kiz-lang/kizi" />
+</a>
+<!-- This image made with [contrib.rocks](https://contrib.rocks).-->
