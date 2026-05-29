@@ -6,32 +6,72 @@
 //|    |_|\_\___/\__\__,_|
 //|
 //|
-//|    A simple standard library for practical tools.
+//|    kiz 简易标准库 (kstd)
 //|
-//|    Only depends on C standard library
+//|    面向实用工具开发的轻量级基础库。
+//|    整体仅依赖 C 标准库，不引入任何第三方依赖，可在各类环境中稳定部署与使用。
 //|
-//|    Core Type:
-//|        Ptr<T>: Wrapped raw pointer
-//|        Str: String slice type
-//|        Vec<T>: Dynamic array with dual memory management
-//|        Option<T>: Null-safe optional value
-//|        Result<T, E>: Error handling result type
+//|    核心类型：
+//|    - Ptr<T>：原生指针包装器，封装指针常用操作，降低野指针带来的风险。
+//|    - Str：字符串切片类型，代表只读字符串片段，不持有内存所有权。
+//|    - MutStr：可变字符串，支持内容修改、追加与动态扩容。
+//|    - Slice：通用切片类型，用于描述动态数组的连续内存区域。
+//|    - Vec<T>：动态数组，支持双模式内存管理，兼具自动扩容与手动内存控制能力。
+//|    - FixArray<T>：栈上定长数组，轻量化实现，无动态内存分配开销。
+//|    - SmallVec<T>：小容量优化动态数组，优先使用栈内存，减少堆内存频繁分配。
+//|    - MemPool<T>：通用内存池，采用块式内存分配策略，有效降低内存碎片。
+//|    - HashMap<ValueT>：开放寻址哈希表，高性能键值存储容器。
+//|    - Option<T>：空安全可选值类型，显式区分有效数据与空值状态。
+//|    - Result<T, E>：错误处理结果类型，统一正常返回与异常反馈逻辑。
 //|
-//|    SubModules:
-//|        mem: Memory alloc / realloc / free wrapper
-//|        shell: Formatted console print output
-//|        fs: File read & path manipulation
+//|    核心函数：
+//|    - alloc<T>(size_t count) -> Ptr<T>：为指定数量的 T 类型对象分配堆内存，
+//|      返回包装后的指针。分配失败直接调用abort。
+//|    - alloc_or<T>(size_t count) -> Option<Ptr<T>>：安全版内存分配接口，
+//|      分配失败时返回空可选值。
+//|    - realloc<T>(Ptr<T> obj, size_t count) -> Ptr<T>：调整已分配动态内存的大小，
+//|      自动迁移原有数据至新内存空间，分配失败将直接调用abort。
+//|    - realloc_or<T>(Ptr<T> obj, size_t count) -> Option<Ptr<T>>：安全版内存重分配接口，
+//|      操作失败时原有内存保持有效，通过空可选值标识执行错误。
+//|    - free<T>(Ptr<T> obj)：释放 Ptr 管理的动态内存，自动判空，避免重复释放与非法访问。
+//|    - println(Str text)：将只读字符串切片输出至标准流，末尾自动添加换行符。
+//|    - println(MutStr text)：将可变字符串内容输出至标准流，末尾自动添加换行符。
+//|    - print(Str text)：将只读字符串切片输出至标准流，不追加换行，内容暂存于输出缓冲区。
+//|    - print(MutStr text)：将可变字符串内容输出至标准流，不追加换行符。
+//|    - flush()：强制刷新标准输出缓冲区，将缓存内容立即写入目标设备。
+//|    - pathnormalize(Str path) -> Str：标准化文件路径，剔除多余分隔符与 .、.. 等相对路径节点，
+//|      返回规整后的路径切片。
+//|    - pathcat(MutStr path, ...)：拼接多段路径为完整路径，自动适配不同平台的路径分隔符。
+//|    - base_filename(Str path) -> Str：从完整路径中提取文件名，剔除目录前缀。
+//|    - base_dirname(Str path) -> Str：从完整路径中提取目录部分，剔除文件名称。
+//|    - is_abspath(Str path) -> bool：根据当前平台规则，判断传入路径是否为绝对路径。
+//|    - readfile(Str path, Str out) -> KstdIOError：读取指定文件内容至输出缓冲区，
+//|      通过错误枚举标识执行结果与各类读取异常。
+//|    - writefile(Str path, Str text) -> KstdIOError：将字符串内容写入指定文件，支持新建与覆盖文件，
+//|      通过错误枚举反馈运行状态。
+//|        
+//|    核心宏：
+//|    - $ForeachVec(var, vec)：动态数组遍历宏，依次将容器元素绑定至循环变量，简化迭代代码。
+//|    - $Likely(expr)：分支预测优化宏，标记表达式大概率成立，引导编译器优化主流分支，提升运行效率。
+//|    - $Unlikely(expr)：分支预测优化宏，标记表达式极少成立，对异常分支做专项优化，减少指令跳转开销。
+//|    - $Assert(expr)：运行时断言宏，校验逻辑表达式有效性；调试模式下断言失败会主动弹出提示。
+//|    - $AssertEq(left, right)：等值断言宏，校验两个运算结果是否完全相等，用于逻辑校验与简易单元检查。
+//|    - $Unimplement()：标记未实现的代码分支，执行到该位置时主动提醒开发者补全功能。
+//|    - $Unreachable()：标记理论上永远不会执行的代码分支，作为逻辑兜底，意外触发时抛出错误提示。
+//|    - $IsWindows()：编译期平台判断宏，仅在 Windows 系统下判定为真。
+//|    - $IsLinux()：编译期平台判断宏，仅在 Linux 系统下判定为真。
+//|    - $IsMac()：编译期平台判断宏，仅在 macOS 系统下判定为真。
 //|
-//|    Feature:
-//|        Pure POD structure, compact memory footprint
-//|        Support external manual memory & auto realloc mode
-//|        Modern friendly API design
-//|        Cross platform & cross architecture compatible
-//|        Single header only, STB-style deployment
+//|    库特性：
+//|        内部所有数据结构均采用标准 POD 设计，内存布局规整、占用体积极小，
+//|        不使用RTTI和 C++ Exception
+//|        适配嵌入式及资源受限的运行环境。容器组件支持外部手动内存管理、自动动态扩容两种工作模式，
+//|        开发者可根据业务场景自由切换。整套 API 遵循现代 C++ 设计理念，语义清晰、调用逻辑统一。
+//|        本库实现全平台、全架构兼容，可在主流操作系统与硬件架构上正常运行。
+//|        采用经典单头文件 STB 风格分发，无需复杂编译与链接配置，能够快速集成至任意项目中。
 //|
-//|    author: azhz<azhz1107cat@outlook.com>
+//|    作者: azhz<azhz1107cat@outlook.com>
 //|
-
 #pragma once
 
 #if defined(__cpp_modules)
@@ -82,12 +122,9 @@ do { \
     __builtin_trap(); \
 } while (0)
 
-#define $IsWin  defined(_WIN32) || defined(_WIN64)
+#define $IsWindows  defined(_WIN32) || defined(_WIN64)
 #define $IsLinux defined(__linux__)
 #define $IsMac  defined(__APPLE__)
-
-#define $IsX64  defined(__x86_64__) || defined(_M_X64)
-#define $IsArm64 defined(__aarch64__) || defined(_M_ARM64)
 
 #include <cstdint>
 #include <cstdlib>
