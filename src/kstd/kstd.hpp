@@ -25,6 +25,9 @@
 //|    - Result<T, E>：错误处理结果类型，统一正常返回与异常反馈逻辑。
 //|
 //|    核心函数：
+//|    - move<T>(T obj) -> T&&：左值转右值。
+//|    - forward<T>(T&& obj) -> T&&：完美转发。
+//|    - memcpy<T>(Ptr<T> dst, const Ptr<T> src, size_t count)：按元素个数拷贝内存。
 //|    - alloc<T>(size_t count) -> Ptr<T>：为指定数量的 T 类型对象分配堆内存，
 //|      返回包装后的指针。分配失败直接调用abort。
 //|    - alloc_or<T>(size_t count) -> Option<Ptr<T>>：安全版内存分配接口，
