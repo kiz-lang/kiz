@@ -1,5 +1,7 @@
 #pragma once
 
+constexpr uint32_t constInvalidIdx = 0xFFFFFFFFU;
+
 struct StructItemInfo {
     Str name;
     uint32_t tyid;
@@ -12,6 +14,7 @@ enum class TypeKind: uint8_t {
     Struct,
     SumType,
     Alias,
+    Tuple,
 };
 
 struct Type {
@@ -20,6 +23,7 @@ struct Type {
         uint32_t case_alias_ref;
         Vec<StructItemInfo> case_struct_info;
         Vec<uint32_t> case_sumtypes;
+        Vec<uint32_t case_tuple;
     } typeinfo;
 
     Str tyname;
@@ -84,6 +88,20 @@ enum class Terminator : uint8_t {
     Call,
 };
 
+struct Effect {
+    Str effect_name;
+    uint32_t effect_id;
+    uint32_t argv_type; // Tuple
+    uint32_t default_impl;
+};
+
+struct Handler {
+    static constexpr size_t constMaxBind = 32;
+
+    uint32_t effect_id[constMaxBind];
+    uint32_t fn_idx[constMaxBind];
+};
+
 enum class OptLevel : uint8_t {
     Low,
     Middle,
@@ -117,6 +135,8 @@ struct IRModule {
     Vec<FnMetaData> fn_pool;
     Vec<Type> type_pool;
     Vec<CType> ctype_pool;
+    Vec<Effect> effect_pool;
+    Vec<Handler> handler_pool;
     Vec<FFIMetaData> ffi_fns;
 
     Vec<BasicBlock> basic_blocks;
