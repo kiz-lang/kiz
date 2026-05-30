@@ -46,9 +46,9 @@
 //|    - pathcat(MutStr path, ...)：拼接多段路径为完整路径，自动适配不同平台的路径分隔符。
 //|    - base_filename(Str path) -> Str：从完整路径中提取文件名，剔除目录前缀。
 //|    - is_abspath(Str path) -> bool：根据当前平台规则，判断传入路径是否为绝对路径。
-//|    - readfile(Str path, Str out) -> KstdIOError：读取指定文件内容至输出缓冲区，
+//|    - readfile(Str path, Str out) -> IOError：读取指定文件内容至输出缓冲区，
 //|      通过错误枚举标识执行结果与各类读取异常。
-//|    - writefile(Str path, Str text) -> KstdIOError：将字符串内容写入指定文件，支持新建与覆盖文件，
+//|    - writefile(Str path, Str text) -> IOError：将字符串内容写入指定文件，支持新建与覆盖文件，
 //|      通过错误枚举反馈运行状态。
 //|    - enumeration_name<T>(T enum_item) -> Str：将枚举项转为字符串。
 //|        
@@ -246,6 +246,8 @@ public:
 // 
 // ===-----------------------
 
+
+// ===-----------------------
 //
 // 原始指针类型
 // kstd所有函数不允许返回C++裸指针，要么返回引用，要么返回Ptr<T>类型
@@ -330,6 +332,7 @@ struct Ptr {
     }
 };
 
+// ===-----------------------
 // 
 // 字符串切片类型
 // 
@@ -353,11 +356,11 @@ struct Str {
 
     /// 获取指定下标字节
     constexpr auto operator[](uint32_t idx) noexcept -> uint8_t& {
-        assert(idx < len && "Str: index out of range");
+        $Assert(idx < len && "Str: index out of range");
         return ptr[idx];
     }
     constexpr auto operator[](uint32_t idx) const noexcept -> const uint8_t& {
-        assert(idx < len && "Str: index out of range");
+        $Assert(idx < len && "Str: index out of range");
         return ptr[idx];
     }
 
@@ -368,7 +371,7 @@ struct Str {
 
     /// 获取子串（从 start 开始，取 len 个字节，不拷贝内存，仅指向原区域）
     constexpr auto substr(uint32_t start, uint32_t sub_len) const noexcept -> Str {
-        assert(start + sub_len <= len && "Str: substr out of range");
+        $Assert(start + sub_len <= len && "Str: substr out of range");
         return Str(ptr + start, sub_len);
     }
 
@@ -416,6 +419,8 @@ struct Str {
     }
 };
 
+// ===-----------------------
+//
 // 
 // 可变字符串类型
 // 拥有内存所有权，自动管理缓冲区，保证末尾 '\0'
@@ -479,11 +484,11 @@ struct MutStr {
 
     /// 下标访问（可修改）
     auto operator[](uint32_t idx) noexcept -> uint8_t& {
-        assert(idx < size() && "MutStr: index out of range");
+        $Assert(idx < size() && "MutStr: index out of range");
         return _buf[idx];
     }
     auto operator[](uint32_t idx) const noexcept -> const uint8_t& {
-        assert(idx < size() && "MutStr: index out of range");
+        $Assert(idx < size() && "MutStr: index out of range");
         return _buf[idx];
     }
 
@@ -493,6 +498,7 @@ struct MutStr {
     }
 };
 
+// ===-----------------------
 //
 // 动态数组类型
 //
@@ -501,7 +507,6 @@ struct Vec {
     Ptr<T>    data;
     uint32_t  len;
     uint32_t  cap;
-    bool      external;   // 是否绑定外部缓冲区（外部不释放）
 
     /// 空构造（自动管理内存）
     constexpr Vec() noexcept : data(nullptr), len(0), cap(0), external(false) {}
@@ -510,13 +515,6 @@ struct Vec {
     constexpr Vec(Ptr<T> buf, uint32_t buf_cap) noexcept
         : data(buf), len(0), cap(buf_cap), external(true)
     {}
-
-    /// 析构自动释放内部内存
-    ~Vec() noexcept {
-        if (!external && !data.is_null()) {
-            ::free(data.get());
-        }
-    }
 
     /// 禁止拷贝
     Vec(const Vec&) = delete;
@@ -528,20 +526,17 @@ struct Vec {
         other.data = Ptr<T>(nullptr);
         other.len = 0;
         other.cap = 0;
-        other.external = false;
     }
     /// 移动赋值
     Vec& operator=(Vec&& other) noexcept {
         if (this != &other) {
-            if (!external && !data.is_null()) ::free(data.get());
+            if (!data.is_null()) ::free(data.get());
             data = other.data;
             len = other.len;
             cap = other.cap;
-            external = other.external;
             other.data = Ptr<T>(nullptr);
             other.len = 0;
             other.cap = 0;
-            other.external = false;
         }
         return *this;
     }
@@ -556,13 +551,13 @@ struct Vec {
         if (new_cap <= cap) return;
         if (external) {
             // 外部缓冲区不可扩容，仅允许预留不超过现有容量
-            assert(new_cap <= cap && "Vec: external buffer cannot be grown");
+            $Assert(new_cap <= cap && "Vec: external buffer cannot be grown");
             return;
         }
         // 自动内存管理：重新分配
         size_t bytes = sizeof(T) * new_cap;
         T* new_data = static_cast<T*>(::realloc(data.get(), bytes));
-        assert(new_data != nullptr && "Vec: reserve failed");
+        $Assert(new_data != nullptr && "Vec: reserve failed");
         data = Ptr<T>(new_data);
         cap = new_cap;
     }
@@ -571,7 +566,7 @@ struct Vec {
     auto push_back(const T& value) noexcept -> void {
         if (len >= cap) {
             if (external) {
-                assert(false && "Vec: external buffer overflow");
+                $Assert(false && "Vec: external buffer overflow");
                 return;
             }
             // 自动扩容策略：2倍增长，最小容量4
@@ -635,7 +630,7 @@ struct Vec {
     }
 };
 
-
+// ===-----------------------
 //
 // 通用切片类型（非拥有）
 //
@@ -651,11 +646,11 @@ struct Slice {
     Slice(const Vec<T>& v) noexcept : ptr(v.get_data()), len(v.size()) {}
 
     constexpr auto operator[](uint32_t idx) noexcept -> T& {
-        assert(idx < len && "Slice: index out of range");
+        $Assert(idx < len && "Slice: index out of range");
         return ptr[idx];
     }
     constexpr auto operator[](uint32_t idx) const noexcept -> const T& {
-        assert(idx < len && "Slice: index out of range");
+        $Assert(idx < len && "Slice: index out of range");
         return ptr[idx];
     }
 
@@ -663,8 +658,8 @@ struct Slice {
     constexpr auto is_empty() const noexcept -> bool { return len == 0; }
 };
 
-
-// 
+// ===-----------------------
+//
 // 可选类型
 // 
 enum class OptTag : uint8_t {
@@ -706,12 +701,12 @@ struct Option {
 
     /// 取值（不检查，使用者保证有值）
     constexpr auto unwrap() noexcept -> T& {
-        assert(is_some() && "Option: unwrap on none");
+        $Assert(is_some() && "Option: unwrap on none");
         return as.val;
     }
 
     constexpr auto unwrap() const noexcept -> const T& {
-        assert(is_some() && "Option: unwrap on none");
+        $Assert(is_some() && "Option: unwrap on none");
         return as.val;
     }
 
@@ -727,6 +722,7 @@ struct Option {
 };
 
 
+// ===-----------------------
 // 
 // 结果类型
 // 
@@ -790,12 +786,12 @@ struct Result {
     }
 };
 
-
+// ===-----------------------
 //
 // 文件 I/O 错误枚举
 //
-enum class KstdIOError : uint8_t {
-    None = 0,            // 成功
+enum class IOError : uint8_t {
+    None,                // 成功
     FileNotFound,        // 文件不存在
     AccessDenied,        // 权限不足
     ReadError,           // 读取失败
@@ -829,7 +825,7 @@ struct MemPool {
         // 一次性分配连续内存
         size_t bytes = sizeof(Block) * block_cnt;
         Block* raw = static_cast<Block*>(::malloc(bytes));
-        assert(raw != nullptr && "MemPool: allocation failed");
+        $Assert(raw != nullptr && "MemPool: allocation failed");
         mem = Ptr<Block>(raw);
 
         // 构建空闲链表
@@ -854,7 +850,7 @@ struct MemPool {
     /// 获取一个空闲块，返回指向该块中 T 类型对象的指针
     auto acquire() noexcept -> Ptr<T> {
         if (avail == 0) {
-            assert(false && "MemPool: no free blocks");
+            $Assert(false && "MemPool: no free blocks");
             return Ptr<T>(nullptr);
         }
         Block* blk = free_list;
@@ -974,7 +970,7 @@ struct HashMap {
         }
 
         // 表满或逻辑错误
-        assert(false && "HashMap: insert failed (table full?)");
+        $Assert(false && "HashMap: insert failed (table full?)");
         return Option<ValueT>::none();
     }
 
@@ -1069,8 +1065,35 @@ constexpr auto move(T&& obj) noexcept -> T&& {
 }
 
 /// 完美转发
+namespace detail {
+template<typename T>
+struct remove_reference {
+    using type = T;
+};
+
+template<typename T>
+struct remove_reference<T&> {
+    using type = T;
+};
+
+template<typename T>
+struct remove_reference<T&&> {
+    using type = T;
+};
+
+template<typename T>
+using remove_reference_t = remove_reference<T>::type;
+
+} // namespace detail
+
+/// 完美转发
 template <typename T>
-constexpr auto forward(T&& obj) noexcept -> T&& {
+constexpr T&& forward(::detail::remove_reference_t<T>& obj) noexcept {
+    return static_cast<T&&>(obj);
+}
+
+template <typename T>
+constexpr T&& forward(::detail::remove_reference_t<T>&& obj) noexcept {
     return static_cast<T&&>(obj);
 }
 
@@ -1168,10 +1191,10 @@ inline auto pathnormalize(Str path) noexcept -> Str {
     // 平台分隔符
     const char sep = 
 #if $IsWindows
-        '\\';
+        '\\'
 #else
-        '/';
-#endif
+        '/'
+#endif ;
 
     // 简化实现：去除重复分隔符，处理 '.' 和 '..'（基础）
     for (uint32_t i = 0; i < path.len; ++i) {
@@ -1209,10 +1232,10 @@ inline auto pathcat(MutStr& path, Str part) noexcept -> void {
     if (part.is_empty()) return;
     char sep =
 #if $IsWindows
-        '\\';
+        '\\'
 #else
-        '/';
-#endif
+        '/'
+#endif ;
     // 如果 path 非空且末尾不是分隔符，则添加分隔符
     if (path.size() > 0 && path[path.size()-1] != static_cast<uint8_t>(sep) &&
         path[path.size()-1] != '/')
@@ -1265,7 +1288,7 @@ inline auto is_abspath(Str path) noexcept -> bool {
 }
 
 /// 读取文件内容到可变字符串 out 中，返回错误码
-inline auto readfile(Str path, MutStr& out) noexcept -> KstdIOError {
+inline auto readfile(Str path, MutStr& out) noexcept -> IOError {
     // 使用 C 文件 API
 #if $IsWindows
     // Windows 需要处理宽字符，这里简单使用 fopen (可能仅支持 ASCII 路径)
@@ -1275,9 +1298,9 @@ inline auto readfile(Str path, MutStr& out) noexcept -> KstdIOError {
 #endif
     if (f == nullptr) {
         // 根据 errno 简单分类
-        if (errno == ENOENT) return KstdIOError::FileNotFound;
-        if (errno == EACCES || errno == EPERM) return KstdIOError::AccessDenied;
-        return KstdIOError::Unknown;
+        if (errno == ENOENT) return IOError::FileNotFound;
+        if (errno == EACCES || errno == EPERM) return IOError::AccessDenied;
+        return IOError::Unknown;
     }
 
     // 获取文件大小
@@ -1287,7 +1310,7 @@ inline auto readfile(Str path, MutStr& out) noexcept -> KstdIOError {
 
     if (fsize < 0) {
         ::fclose(f);
-        return KstdIOError::ReadError;
+        return IOError::ReadError;
     }
 
     out.clear();
@@ -1302,28 +1325,28 @@ inline auto readfile(Str path, MutStr& out) noexcept -> KstdIOError {
 
     if (::ferror(f)) {
         ::fclose(f);
-        return KstdIOError::ReadError;
+        return IOError::ReadError;
     }
     ::fclose(f);
-    return KstdIOError::None;
+    return IOError::None;
 }
 
 /// 将字符串写入文件（覆盖模式）
-inline auto writefile(Str path, Str text) noexcept -> KstdIOError {
+inline auto writefile(Str path, Str text) noexcept -> IOError {
     FILE* f = ::fopen(path.c_str(), "wb");
     if (f == nullptr) {
-        if (errno == EACCES || errno == EPERM) return KstdIOError::AccessDenied;
-        return KstdIOError::WriteError;
+        if (errno == EACCES || errno == EPERM) return IOError::AccessDenied;
+        return IOError::WriteError;
     }
     if (text.len > 0) {
         size_t written = ::fwrite(text.ptr.get(), 1, text.len, f);
         if (written != text.len) {
             ::fclose(f);
-            return KstdIOError::WriteError;
+            return IOError::WriteError;
         }
     }
     ::fclose(f);
-    return KstdIOError::None;
+    return IOError::None;
 }
 
 // ===-----------------------
@@ -1334,7 +1357,7 @@ inline auto writefile(Str path, Str text) noexcept -> KstdIOError {
 
 namespace detail {
 
-// 编译期字符串工具
+/// 编译期字符串工具
 constexpr size_t cstr_len(const char* s) noexcept {
     size_t i = 0;
     while (s[i] != '\0') ++i;
@@ -1366,7 +1389,7 @@ constexpr const char* cstr_find_str(const char* haystack, const char* needle) no
     return nullptr;
 }
 
-// 从编译器签名提取单个枚举值名称
+/// 从编译器签名提取单个枚举值名称
 template <auto V>
 constexpr auto enum_item_name() noexcept -> Str {
     constexpr auto sig = [] {
@@ -1452,7 +1475,7 @@ struct GenSeqImpl<0, Is...> {
 template <int N>
 using GenSeq = typename GenSeqImpl<N>::type;
 
-// ---------- 生成 129 个枚举名称的静态数组 ----------
+// 生成 129 个枚举名称的静态数组
 template <typename T, T V>
 constexpr auto get_enum_name() noexcept -> Str {
     return enum_item_name<V>();
@@ -1495,6 +1518,7 @@ inline auto enumeration_name(T enum_item) noexcept -> Str {
 // 清理所有 $ 前缀宏
 //
 // ===-----------------------
+
 #if $NoMacro
 #   undef $ForeachVec
 #   undef $Likely
