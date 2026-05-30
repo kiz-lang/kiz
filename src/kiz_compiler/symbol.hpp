@@ -8,29 +8,8 @@ enum class SymKind: uint8_t {
 
 struct Symbol {
     Str name;
+    Type symtype;
     SymKind symkind;
-};
-
-struct StructItemInfo {
-    Str name;
-    uint32_t tyid;
-};
-
-enum class TypeKind: uint8_t {
-    Int, Decimal, Array,
-    Struct, SumType, Alias,
-};
-
-struct Type {
-    uint32_t tyid;
-    TypeKind typekind;
-    Str tyname;
-    union {
-        uint32_t case_array_count;
-        Vec<StructItemInfo> case_struct_info;
-        Vec<uint32_t> case_sumtypes;
-        uint32_t case_alias_ref;
-    } typeinfo;
 };
 
 struct SymbolTable {
