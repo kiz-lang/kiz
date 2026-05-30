@@ -21,6 +21,7 @@
 //|    - HashMap<ValueT>：开放寻址哈希表，高性能键值存储容器。
 //|    - Option<T>：空安全可选值类型，显式区分有效数据与空值状态。
 //|    - Result<T, E>：错误处理结果类型，统一正常返回与异常反馈逻辑。
+//|    - NoCopyMove：禁止拷贝与移动构造，空基类。
 //|
 //|    核心函数：
 //|    - move<T>(T obj) -> T&&：左值转右值。
@@ -65,6 +66,9 @@
 //|    - $IsLinux：编译期平台判断宏，仅在 Linux 系统下判定为真。
 //|    - $IsMac：编译期平台判断宏，仅在 macOS 系统下判定为真。
 //|    - $NoMacro：当前头文件定义的全部 $ 前缀宏统一 undef。
+//|
+//|    核心常量：
+//|   - constInvalidIdx：非法索引值。
 //|
 //|    库特性：
 //|        内部所有数据结构均采用标准 POD 设计，内存布局规整、占用体积极小，
@@ -209,6 +213,26 @@ do { \
 ///         // macOS 平台专属代码
 ///     #endif
 #define $IsMac  defined(__APPLE__)
+
+
+//
+// 非法索引
+//
+constexpr uint32_t constInvalidIdx = 0xFFFFFFFFU;
+
+// 
+// 不准拷贝与移动, 空基类
+//
+class NoCopyMove {
+public:
+    NoCopyMove() = default;
+    ~NoCopyMove() = default;
+    NoCopyMove(const NoCopyMove&) = delete;
+    NoCopyMove(NoCopyMove&&) = delete;
+    NoCopyMove& operator=(const NoCopyMove&) = delete;
+    NoCopyMove& operator=(NoCopyMove&&) = delete;
+};
+
 
 // ===-----------------------
 //
