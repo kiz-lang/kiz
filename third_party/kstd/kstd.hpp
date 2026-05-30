@@ -218,7 +218,7 @@ do { \
 //
 // 非法索引
 //
-constexpr uint32_t constInvalidIdx = 0xFFFFFFFFU;
+constexpr uint32_t constInvalidIndex = 0xFFFFFFFFU;
 
 // 
 // 不准拷贝与移动, 空基类
@@ -240,20 +240,17 @@ public:
 // 
 // ===-----------------------
 
+//
+// 原始指针类型
+// kstd所有函数不允许返回C++裸指针，要么返回引用，要么返回Ptr<T>类型
+//
+
 template <typename T>
 struct Ptr {
     T* ptr;
 
     /// 显式构造，禁止隐式转换
     explicit constexpr Ptr(T* p = nullptr) noexcept : ptr(p) {}
-
-    /// 解引用
-    constexpr auto operator*() noexcept -> T& {
-        return *ptr;
-    }
-    constexpr auto operator*() const noexcept -> const T& {
-        return *ptr;
-    }
 
     /// 成员访问箭头
     constexpr auto operator->() noexcept -> T* {
@@ -307,14 +304,6 @@ struct Ptr {
     constexpr auto operator>(Ptr other) const noexcept -> bool {
         return ptr > other.ptr;
     }
-
-    /// 转原生裸指针
-    constexpr auto get() noexcept -> T* {
-        return ptr;
-    }
-    constexpr auto get() const noexcept -> const T* {
-        return ptr;
-    }
     
     /// 取值解引用
     constexpr auto deref() const noexcept -> T {
@@ -327,33 +316,33 @@ struct Ptr {
     }
 };
 
-// ===--------
-// Str POD
-// ===---------
+// 
+// 字符串切片类型
+// 
 struct Str {
     uint32_t len;
-    Ptr<u8>  ptr;
+    Ptr<uint8_t>  ptr;
 
     /// 空字符串构造
     constexpr Str() noexcept : len(0), ptr(nullptr) {}
 
     /// 显式构造（ptr 需指向合法内存，外部保证生命周期）
-    explicit constexpr Str(Ptr<u8> p, uint32_t l) noexcept : len(l), ptr(p) {}
+    explicit constexpr Str(Ptr<uint8_t> p, uint32_t l) noexcept : len(l), ptr(p) {}
 
     /// 从 C 字符串构造（自动计算长度，不含 '\0'）
     explicit Str(const char* cstr) noexcept : len(0), ptr(nullptr) {
         if (cstr != nullptr) {
             len = static_cast<uint32_t>(strlen(cstr));
-            ptr = Ptr<u8>(reinterpret_cast<u8*>(const_cast<char*>(cstr)));
+            ptr = Ptr<uint8_t>(reinterpret_cast<uint8_t*>(const_cast<char*>(cstr)));
         }
     }
 
     /// 获取指定下标字节
-    constexpr auto operator[](uint32_t idx) noexcept -> u8& {
+    constexpr auto operator[](uint32_t idx) noexcept -> uint8_t& {
         assert(idx < len && "Str: index out of range");
         return ptr[idx];
     }
-    constexpr auto operator[](uint32_t idx) const noexcept -> const u8& {
+    constexpr auto operator[](uint32_t idx) const noexcept -> const uint8_t& {
         assert(idx < len && "Str: index out of range");
         return ptr[idx];
     }
@@ -393,7 +382,7 @@ struct Str {
     }
 
     /// 检查是否包含指定字符
-    constexpr auto contains(u8 ch) const noexcept -> bool {
+    constexpr auto contains(uint8_t ch) const noexcept -> bool {
         for (uint32_t i = 0; i < len; ++i) {
             if (ptr[i] == ch) return true;
         }
@@ -413,9 +402,9 @@ struct Str {
     }
 };
 
-// ===--------
-// Vec POD
-// ===---------
+//
+// 动态数组类型
+//
 template <typename T>
 struct Vec {
     Ptr<T>  data;
@@ -434,59 +423,9 @@ struct Vec {
     constexpr Vec(Args&&... args) noexcept
     : data(nullptr), len(0), cap(0) {
         constexpr size_t arg_cnt = sizeof...(Args);
-        if constexpr (arg_cnt > 0) {
-            reserve_maybe_realloc(static_cast<uint32_t>(arg_cnt));
-            (push_maybe_realloc(args), ...);
-        }
+        $Unimplement();
     }
 
-    constexpr auto reserve_maybe_realloc(uint32_t new_cap) noexcept -> void {
-        if (new_cap <= cap) return;
-        auto old_ptr = data.get();
-        auto new_ptr = mem::realloc(old_ptr, static_cast<size_t>(new_cap));
-        if (!new_ptr) return;
-
-        data = new_ptr;
-        cap = new_cap;
-    }
-
-    constexpr auto push_maybe_realloc(const T& val) noexcept -> void {
-        if (len >= cap) {
-            uint32_t new_cap = (cap == 0) ? 4 : cap * 2;
-            reserve_maybe_realloc(new_cap);
-        }
-        if (len < cap) {
-            data[len++] = val;
-        }
-    }
-
-    template<typename... Args>
-    constexpr auto emplace_maybe_realloc(Args&&... args) noexcept -> T& {
-        if (len >= cap) {
-            uint32_t new_cap = cap == 0 ? 4 : cap * 2;
-            reserve_maybe_realloc(new_cap);
-        }
-        T& ref = data[len++];
-        new (&ref) T(args...);
-        return ref;
-    }
-
-    constexpr auto extend_maybe_realloc(const T* src, uint32_t count) noexcept -> void {
-        if (count == 0) return;
-        uint32_t need = len + count;
-        if (need > cap) {
-            uint32_t new_cap = cap;
-            while (new_cap < need)
-                new_cap = new_cap == 0 ? 4 : new_cap * 2;
-            reserve_maybe_realloc(new_cap);
-        }
-        memcpy(data.get() + len, src, sizeof(T) * count);
-        len += count;
-    }
-
-    constexpr auto extend_maybe_realloc(const Vec<T>& other) noexcept -> void {
-        extend_maybe_realloc(other.data.get(), other.len);
-    }
 
     /// 判空
     constexpr auto isempty() const noexcept -> bool {
@@ -500,23 +439,11 @@ struct Vec {
         }
     }
 
-    // 尾插，外部保证 cap 足够
-    constexpr auto push(const T& val) noexcept -> void {
-        if (len < cap) {
-            data[len++] = val;
-        }
-    }
-
     /// 弹出末尾
     constexpr auto pop() noexcept -> void {
         if (len > 0) {
             len--;
         }
-    }
-
-    /// 清空长度（不释放内存）
-    constexpr auto clear() noexcept -> void {
-        len = 0;
     }
 
     /// 下标读写
@@ -559,18 +486,11 @@ struct Vec {
     constexpr auto get_data() const noexcept -> Ptr<T> {
         return data;
     }
-
-    /// 重置绑定外部内存
-    constexpr auto reset(Ptr<T> buf, uint32_t buf_cap) noexcept -> void {
-        data = buf;
-        len = 0;
-        cap = buf_cap;
-    }
 };
 
-// ===--------
-// Option POD
-// ===---------
+// 
+// 可选类型
+// 
 enum class OptTag : uint8_t {
     None,
     Some
@@ -630,9 +550,9 @@ struct Option {
     }
 };
 
-// ===--------
-// Result POD
-// ===---------
+// 
+// 结果类型
+// 
 enum class ResTag : uint8_t {
     Ok,
     Err
