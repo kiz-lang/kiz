@@ -1,6 +1,7 @@
 #pragma once
 
 struct FileData {
+    Vec<uint32_t> linenomap; // index => offset
     Str name;
     Str path;
     Str content;
@@ -19,8 +20,8 @@ public:
     auto open_new(Str path) -> Result<uint32_t, SourceManagerError>;
     
     auto update_file_by_id(uint32_t id) -> bool;
-    auto update_file_by_path(Str path) -> bool
+    auto update_file_by_path(Str path) -> bool;
 
-    void clear() noexcept;
-    size_t file_count() const noexcept;
+    auto clear() noexcept -> void;
+    auto file_count() const noexcept -> uint32_t;
 };
