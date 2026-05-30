@@ -17,8 +17,6 @@
 //|    - MutStr：可变字符串，支持内容修改、追加与动态扩容。
 //|    - Slice：通用切片类型，用于描述动态数组的连续内存区域。
 //|    - Vec<T>：动态数组，支持双模式内存管理，兼具自动扩容与手动内存控制能力。
-//|    - FixArray<T>：栈上定长数组，轻量化实现，无动态内存分配开销。
-//|    - SmallVec<T>：小容量优化动态数组，优先使用栈内存，减少堆内存频繁分配。
 //|    - MemPool<T>：通用内存池，采用块式内存分配策略，有效降低内存碎片。
 //|    - HashMap<ValueT>：开放寻址哈希表，高性能键值存储容器。
 //|    - Option<T>：空安全可选值类型，显式区分有效数据与空值状态。
@@ -41,12 +39,11 @@
 //|    - println(MutStr text)：将可变字符串内容输出至标准流，末尾自动添加换行符。
 //|    - print(Str text)：将只读字符串切片输出至标准流，不追加换行，内容暂存于输出缓冲区。
 //|    - print(MutStr text)：将可变字符串内容输出至标准流，不追加换行符。
-//|    - flush()：强制刷新标准输出缓冲区，将缓存内容立即写入目标设备。
+//|    - shellflush()：强制刷新标准输出缓冲区，将缓存内容立即写入目标设备。
 //|    - pathnormalize(Str path) -> Str：标准化文件路径，剔除多余分隔符与 .、.. 等相对路径节点，
 //|      返回规整后的路径切片。
 //|    - pathcat(MutStr path, ...)：拼接多段路径为完整路径，自动适配不同平台的路径分隔符。
 //|    - base_filename(Str path) -> Str：从完整路径中提取文件名，剔除目录前缀。
-//|    - base_dirname(Str path) -> Str：从完整路径中提取目录部分，剔除文件名称。
 //|    - is_abspath(Str path) -> bool：根据当前平台规则，判断传入路径是否为绝对路径。
 //|    - readfile(Str path, Str out) -> KstdIOError：读取指定文件内容至输出缓冲区，
 //|      通过错误枚举标识执行结果与各类读取异常。
@@ -56,15 +53,17 @@
 //|        
 //|    核心宏：
 //|    - $ForeachVec(var, vec)：动态数组遍历宏，依次将容器元素绑定至循环变量，简化迭代代码。
+//|    - $Guard(expr)：守卫语句，后面需要接else。
+//|    - $ReturnIfErr(var)：简化Result判断is_err()调用。
 //|    - $Likely(expr)：分支预测优化宏，标记表达式大概率成立，引导编译器优化主流分支，提升运行效率。
 //|    - $Unlikely(expr)：分支预测优化宏，标记表达式极少成立，对异常分支做专项优化，减少指令跳转开销。
 //|    - $Assert(expr)：运行时断言宏，校验逻辑表达式有效性；调试模式下断言失败会主动弹出提示。
 //|    - $AssertEq(left, right)：等值断言宏，校验两个运算结果是否完全相等，用于逻辑校验与简易单元检查。
 //|    - $Unimplement()：标记未实现的代码分支，执行到该位置时主动提醒开发者补全功能。
 //|    - $Unreachable()：标记理论上永远不会执行的代码分支，作为逻辑兜底，意外触发时抛出错误提示。
-//|    - $IsWindows()：编译期平台判断宏，仅在 Windows 系统下判定为真。
-//|    - $IsLinux()：编译期平台判断宏，仅在 Linux 系统下判定为真。
-//|    - $IsMac()：编译期平台判断宏，仅在 macOS 系统下判定为真。
+//|    - $IsWindows：编译期平台判断宏，仅在 Windows 系统下判定为真。
+//|    - $IsLinux：编译期平台判断宏，仅在 Linux 系统下判定为真。
+//|    - $IsMac：编译期平台判断宏，仅在 macOS 系统下判定为真。
 //|    - $NoMacro：当前头文件定义的全部 $ 前缀宏统一 undef。
 //|
 //|    库特性：
@@ -80,11 +79,11 @@
 
 
 #pragma once
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
-
 
 #if $IsWindows
 #   include <winnt.h>
@@ -95,20 +94,60 @@
 #   include <unistd.h>
 #endif
 
+namespace kstd {
 
-// ===--------
-// Useful Macros
-// ===---------
+// ===-----------------------
+//
+// 实用的宏定义
+//
+// ===-----------------------
 
+/// 遍历支持下标访问与 size() 方法的容器
+/// 示例:
+///     $ForeachVec(index, peoples){
+///         println(peoples[index]);
+///     }
 #define $ForeachVec(i,v) for (auto i = 0; i < v.size(); ++i)
+
+/// 条件守卫语句
+/// 示例:
+///     $Guard(1==1) else {
+///         return;
+///     }
+#define $Guard(expr) if (expr) {}
+
+/// 结果为错误时直接返回
+/// 示例:
+///     auto a = fetch_data();
+///     $ReturnIfErr(a);
+///     auto a_val = a.must();
+#define $ReturnIfErr(var) if (var.is_err()) { return var; }
+
+/// 分支预测：标记分支为大概率执行
+/// 示例:
+///     if ($Likely(user.age < 100)) {
+///         println(user.to_string());
+///     }
 #ifdef _MSC_VER
 #   define $Likely(x) (x)
-#   define $Unlikely(x) (x)
 #else
 #   define $Likely(x)   __builtin_expect(!!(x), 1)
+#endif
+
+/// 分支预测：标记分支为极少执行
+/// 示例:
+///     if ($Unlikely(user.age > 100)) {
+///         println(user.to_string());
+///     }
+#ifdef _MSC_VER
+#   define $Unlikely(x) (x)
+#else
 #   define $Unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 
+/// 运行时断言，表达式为假则终止程序
+/// 示例:
+///     $Assert(ptr != nullptr);
 #define $Assert(expr) \
 do { \
     if (!(expr)) { \
@@ -117,6 +156,9 @@ do { \
     } \
 } while (0)
 
+/// 等值断言，两个表达式不相等则终止程序
+/// 示例:
+///     $AssertEq(ret_code, 0);
 #define $AssertEq(lhs, rhs) \
 do { \
     auto&& _a = (lhs); \
@@ -125,33 +167,55 @@ do { \
         printf("Assert equal failed: %s == %s\n", #lhs, #rhs); \
         __builtin_trap(); \
     } \
-} while(0)
+} while (0)
 
+/// 标记未实现代码分支，执行到此处则终止程序
+/// 示例:
+///     default:
+///         $Unimplement();
 #define $Unimplement() \
 do { \
     printf("Unimplemented code reached\n"); \
     __builtin_trap(); \
 } while (0)
 
+/// 标记不可达代码分支，意外执行则终止程序
+/// 示例:
+///     while (true) { break; }
+///     $Unreachable();
 #define $Unreachable() \
 do { \
     printf("Unreachable code executed\n"); \
     __builtin_trap(); \
 } while (0)
 
+/// 编译期判断：当前为 Windows 平台则为真
+/// 示例:
+///     #if $IsWindows
+///         // Windows 平台专属代码
+///     #endif
 #define $IsWindows  defined(_WIN32) || defined(_WIN64)
+
+/// 编译期判断：当前为 Linux 平台则为真
+/// 示例:
+///     #if $IsLinux
+///         // Linux 平台专属代码
+///     #endif
 #define $IsLinux defined(__linux__)
+
+/// 编译期判断：当前为 macOS 平台则为真
+/// 示例:
+///     #if $IsMac
+///         // macOS 平台专属代码
+///     #endif
 #define $IsMac  defined(__APPLE__)
 
-// ===--------
-// Kstd's POD and Function
-// ===---------
+// ===-----------------------
+//
+// Kstd's PODs
+// 
+// ===-----------------------
 
-namespace kstd {
-
-// ===--------
-// Pointer POD
-// ===---------
 template <typename T>
 struct Ptr {
     T* ptr;
