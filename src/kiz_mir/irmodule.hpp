@@ -1,7 +1,5 @@
 #pragma once
 
-constexpr uint32_t constInvalidIdx = 0xFFFFFFFFU;
-
 struct StructItemInfo {
     Str name;
     uint32_t tyid;
