@@ -1,10 +1,44 @@
 #pragma once
 
+struct StructItemInfo {
+    Str name;
+    uint32_t tyid;
+};
+
+enum class TypeKind: uint8_t {
+    Int,
+    Decimal,
+    Array,
+    Struct,
+    SumType,
+    Alias,
+};
+
+struct Type {
+    union {
+        uint32_t case_array_count;
+        uint32_t case_alias_ref;
+        Vec<StructItemInfo> case_struct_info;
+        Vec<uint32_t> case_sumtypes;
+    } typeinfo;
+
+    Str tyname;
+    TypeKind typekind;
+    uint32_t tyid;
+};
+
 enum class CTypeKind : uint8_t {
-    Void,  Int,  UInt,
-    LongLong,  ULongLong,
-    Double,  Float, Char,
-    Bool,  Ptr,  FuncPtr,
+    Void,  
+    Int,  
+    UInt,
+    LongLong,
+    ULongLong,
+    Double,
+    Float,
+    Char,
+    Bool,
+    Ptr,
+    FuncPtr,
 };
 
 struct CType {
@@ -26,7 +60,9 @@ struct FFIMetaData {
 };
 
 enum class ConstType : uint8_t {
-    Int, Decimal, String
+    Int,
+    Decimal,
+    String
 };
 
 struct ConstVal {
@@ -40,12 +76,18 @@ struct ConstVal {
 
 
 enum class Terminator : uint8_t {
-    Goto,  GotoIfFalse, GotoIfTrue,
-    Ret,  Call,
+    Goto,  
+    GotoIfFalse,
+    GotoIfTrue,
+    Cmp,
+    Ret,
+    Call,
 };
 
 enum class OptLevel : uint8_t {
-    Low, Middle, High
+    Low,
+    Middle,
+    High
 };
 
 struct FnMetaData {
@@ -57,15 +99,14 @@ struct FnMetaData {
 };
 
 struct BasicBlock {
+    Vec<uint32_t> preds;
+    Vec<uint32_t> succs;
     uint32_t start_offset;
     uint32_t end_offset;
     uint32_t exec_count;
 
-    Vec<uint32_t> preds;
-    Vec<uint32_t> succs;
-
+    uint32_t terminator_opnum;
     Terminator terminator;
-    uint8_t terminator_op_number;
     bool is_loop_head; 
     bool jit_compiled;
 };
@@ -74,8 +115,10 @@ struct IRModule {
     Vec<uint8_t> ins;
     Vec<ConstVal> const_pool;
     Vec<FnMetaData> fn_pool;
+    Vec<Type> type_pool;
+    Vec<CType> ctype_pool;
     Vec<FFIMetaData> ffi_fns;
-    Vec<CType> ffi_types;
+
     Vec<BasicBlock> basic_blocks;
 
     Vec<Span> spans;
