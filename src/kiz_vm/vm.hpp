@@ -16,16 +16,18 @@ class Vm {
     Segment stack_;
     Segment tmp_continuation_;
     */
-    Ptr<IRModule> irmodule_;
+    Object gc_root_;
+    GarbageCollection& gc_;
     JitCompiler& jitc_;
+    Ptr<IRModule> irmodule_;
     Vec<Value> static_mem_;
     Vec<Value> stack_mem_;
 
     /*
-    MemoryPool<Value> stack_mem_pool;
-    Vec<Segment> segment_pool;
+    MemoryPool<Value> stack_mem_pool_;
+    Vec<Segment> segment_pool_;
     uint32_t current_segement_;
-    uint32_t effect_id;
+    uint32_t current_effect_id;
     */
     uint32_t pc_ = 0;
 
@@ -43,6 +45,11 @@ class Vm {
 public:
     explicit Vm(Ptr<IRModule> irmod, JitCompiler& jitc)
     : irmodule_(irmod), jitc_(jitc) {}
+
+    Vm(const Vm&) = delete;
+    Vm(Vm&&) = delete;
+    Vm& operator=(const Vm&) = delete;
+    Vm& operator=(Vm&&) = delete;
 
     auto run() noexcept -> void;
 };
