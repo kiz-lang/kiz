@@ -88,6 +88,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <cstdarg>
+#include <new>
 
 #if $IsWindows
 #   include <winnt.h>
@@ -215,9 +217,13 @@ do { \
 #define $IsMac  defined(__APPLE__)
 
 
+// ===-----------------------
 //
-// 非法索引
+// 核心常量
 //
+// ===-----------------------
+
+/// 非法索引值
 constexpr uint32_t constInvalidIndex = 0xFFFFFFFFU;
 
 // 
@@ -251,6 +257,14 @@ struct Ptr {
 
     /// 显式构造，禁止隐式转换
     explicit constexpr Ptr(T* p = nullptr) noexcept : ptr(p) {}
+
+    /// 获取内部裸指针（少数必要场景使用）
+    constexpr auto get() noexcept -> T* {
+        return ptr;
+    }
+    constexpr auto get() const noexcept -> const T* {
+        return ptr;
+    }
 
     /// 成员访问箭头
     constexpr auto operator->() noexcept -> T* {
@@ -389,7 +403,7 @@ struct Str {
         return false;
     }
 
-    /// 计算哈希值
+    /// 计算哈希值 (FNV-1a 64bit)
     constexpr auto hash() const noexcept -> uint64_t {
         constexpr uint64_t fnv_offset = 14695981039346656037ULL;
         constexpr uint64_t fnv_prime = 1099511628211ULL;
@@ -402,57 +416,191 @@ struct Str {
     }
 };
 
+// 
+// 可变字符串类型
+// 拥有内存所有权，自动管理缓冲区，保证末尾 '\0'
+//
+struct MutStr {
+    Vec<uint8_t> _buf;   // 字符串缓冲区
+
+    /// 空字符串构造
+    constexpr MutStr() noexcept : _buf() {}
+
+    /// 预分配容量构造
+    constexpr MutStr(uint32_t prealloc) noexcept : _buf() {
+        _buf.reserve(prealloc + 1);
+        _buf.push_back(0);  // 初始 '\0'
+    }
+
+    /// 析构自动释放内存（由 Vec 管理）
+    ~MutStr() = default;
+
+    /// 禁止拷贝与移动（继承 Vec 的限制）
+    MutStr(const MutStr&) = delete;
+    MutStr(MutStr&&) = delete;
+    MutStr& operator=(const MutStr&) = delete;
+    MutStr& operator=(MutStr&&) = delete;
+
+    /// 追加单个字符
+    auto push_back(uint8_t c) noexcept -> void {
+        // 去掉原来的末尾 '\0'，追加字符，再补 '\0'
+        if (_buf.size() > 0) _buf.pop();
+        _buf.push_back(c);
+        _buf.push_back(0);
+    }
+
+    /// 追加字符串切片
+    auto append(Str s) noexcept -> void {
+        if (_buf.size() > 0) _buf.pop(); // 去 '\0'
+        for (uint32_t i = 0; i < s.len; ++i) _buf.push_back(s[i]);
+        _buf.push_back(0);
+    }
+
+    /// 追加 C 字符串
+    auto append(const char* cstr) noexcept -> void {
+        append(Str(cstr));
+    }
+
+    /// 清空字符串
+    auto clear() noexcept -> void {
+        _buf.clear();
+        _buf.push_back(0);
+    }
+
+    /// 获取字符串长度（不含结尾 '\0'）
+    auto size() const noexcept -> uint32_t {
+        return _buf.size() > 0 ? _buf.size() - 1 : 0;
+    }
+
+    /// 获取 C 风格字符串指针
+    auto c_str() const noexcept -> const char* {
+        return _buf.isempty() ? "" : reinterpret_cast<const char*>(_buf.get_data().get());
+    }
+
+    /// 下标访问（可修改）
+    auto operator[](uint32_t idx) noexcept -> uint8_t& {
+        assert(idx < size() && "MutStr: index out of range");
+        return _buf[idx];
+    }
+    auto operator[](uint32_t idx) const noexcept -> const uint8_t& {
+        assert(idx < size() && "MutStr: index out of range");
+        return _buf[idx];
+    }
+
+    /// 转为 Str 切片
+    auto as_str() const noexcept -> Str {
+        return Str(_buf.get_data(), size());
+    }
+};
+
 //
 // 动态数组类型
 //
 template <typename T>
 struct Vec {
-    Ptr<T>  data;
-    uint32_t len;
-    uint32_t cap;
+    Ptr<T>    data;
+    uint32_t  len;
+    uint32_t  cap;
+    bool      external;   // 是否绑定外部缓冲区（外部不释放）
 
-    /// 空构造
-    constexpr Vec() noexcept : data(nullptr), len(0), cap(0) {}
+    /// 空构造（自动管理内存）
+    constexpr Vec() noexcept : data(nullptr), len(0), cap(0), external(false) {}
 
-    /// 从外部已分配内存绑定
+    /// 绑定外部已分配内存（外部管理，不扩容）
     constexpr Vec(Ptr<T> buf, uint32_t buf_cap) noexcept
-        : data(buf), len(0), cap(buf_cap)
+        : data(buf), len(0), cap(buf_cap), external(true)
     {}
 
-    template <typename... Args>
-    constexpr Vec(Args&&... args) noexcept
-    : data(nullptr), len(0), cap(0) {
-        constexpr size_t arg_cnt = sizeof...(Args);
-        $Unimplement();
+    /// 析构自动释放内部内存
+    ~Vec() noexcept {
+        if (!external && !data.is_null()) {
+            ::free(data.get());
+        }
     }
 
+    /// 禁止拷贝
+    Vec(const Vec&) = delete;
+    Vec& operator=(const Vec&) = delete;
+
+    /// 移动构造
+    Vec(Vec&& other) noexcept 
+        : data(other.data), len(other.len), cap(other.cap), external(other.external) {
+        other.data = Ptr<T>(nullptr);
+        other.len = 0;
+        other.cap = 0;
+        other.external = false;
+    }
+    /// 移动赋值
+    Vec& operator=(Vec&& other) noexcept {
+        if (this != &other) {
+            if (!external && !data.is_null()) ::free(data.get());
+            data = other.data;
+            len = other.len;
+            cap = other.cap;
+            external = other.external;
+            other.data = Ptr<T>(nullptr);
+            other.len = 0;
+            other.cap = 0;
+            other.external = false;
+        }
+        return *this;
+    }
 
     /// 判空
     constexpr auto isempty() const noexcept -> bool {
         return len == 0;
     }
 
-    /// 预留容量
-    constexpr auto reserve(uint32_t new_cap) noexcept -> void {
-        if (new_cap > cap) {
-            cap = new_cap;
+    /// 预留容量（自动模式分配内存，外部模式仅检查）
+    auto reserve(uint32_t new_cap) noexcept -> void {
+        if (new_cap <= cap) return;
+        if (external) {
+            // 外部缓冲区不可扩容，仅允许预留不超过现有容量
+            assert(new_cap <= cap && "Vec: external buffer cannot be grown");
+            return;
+        }
+        // 自动内存管理：重新分配
+        size_t bytes = sizeof(T) * new_cap;
+        T* new_data = static_cast<T*>(::realloc(data.get(), bytes));
+        assert(new_data != nullptr && "Vec: reserve failed");
+        data = Ptr<T>(new_data);
+        cap = new_cap;
+    }
+
+    /// 追加元素
+    auto push_back(const T& value) noexcept -> void {
+        if (len >= cap) {
+            if (external) {
+                assert(false && "Vec: external buffer overflow");
+                return;
+            }
+            // 自动扩容策略：2倍增长，最小容量4
+            uint32_t new_cap = cap == 0 ? 4 : cap * 2;
+            reserve(new_cap);
+        }
+        data[len] = value;
+        ++len;
+    }
+
+    /// 弹出末尾元素
+    auto pop() noexcept -> void {
+        if (len > 0) {
+            --len;
         }
     }
 
-    /// 弹出末尾
-    constexpr auto pop() noexcept -> void {
-        if (len > 0) {
-            len--;
-        }
+    /// 清空数组（保留容量）
+    auto clear() noexcept -> void {
+        len = 0;
     }
 
     /// 下标读写
     constexpr auto operator[](uint32_t idx) noexcept -> T& {
-        $Assert(0 <= idx && idx < len);
+        $Assert(idx < len);
         return data[idx];
     }
     constexpr auto operator[](uint32_t idx) const noexcept -> const T& {
-        $Assert(0 <= idx && idx < len);
+        $Assert(idx < len);
         return data[idx];
     }
 
@@ -463,7 +611,6 @@ struct Vec {
     constexpr auto front() const noexcept -> const T& {
         return data[0];
     }
-
     constexpr auto back() noexcept -> T& {
         return data[len - 1];
     }
@@ -487,6 +634,35 @@ struct Vec {
         return data;
     }
 };
+
+
+//
+// 通用切片类型（非拥有）
+//
+template <typename T>
+struct Slice {
+    Ptr<T>    ptr;
+    uint32_t  len;
+
+    constexpr Slice() noexcept : ptr(nullptr), len(0) {}
+    constexpr Slice(Ptr<T> p, uint32_t l) noexcept : ptr(p), len(l) {}
+
+    /// 从 Vec 隐式构造
+    Slice(const Vec<T>& v) noexcept : ptr(v.get_data()), len(v.size()) {}
+
+    constexpr auto operator[](uint32_t idx) noexcept -> T& {
+        assert(idx < len && "Slice: index out of range");
+        return ptr[idx];
+    }
+    constexpr auto operator[](uint32_t idx) const noexcept -> const T& {
+        assert(idx < len && "Slice: index out of range");
+        return ptr[idx];
+    }
+
+    constexpr auto size() const noexcept -> uint32_t { return len; }
+    constexpr auto is_empty() const noexcept -> bool { return len == 0; }
+};
+
 
 // 
 // 可选类型
@@ -549,6 +725,7 @@ struct Option {
         tag = OptTag::None;
     }
 };
+
 
 // 
 // 结果类型
@@ -614,8 +791,710 @@ struct Result {
 };
 
 
+//
+// 文件 I/O 错误枚举
+//
+enum class KstdIOError : uint8_t {
+    None = 0,            // 成功
+    FileNotFound,        // 文件不存在
+    AccessDenied,        // 权限不足
+    ReadError,           // 读取失败
+    WriteError,          // 写入失败
+    Unknown              // 未知错误
+};
+
+
+// ===-----------------------
+//
+// 内存池类型
+// 采用固定块大小与空闲链表，仅适用于平凡类型
+//
+template <typename T>
+struct MemPool {
+    struct Block {
+        alignas(T) uint8_t storage[sizeof(T)];
+        Block* next;   // 空闲链表节点
+    };
+
+    Ptr<Block>  mem;        // 底层连续内存
+    Block*      free_list;  // 空闲链表头
+    uint32_t    total;      // 总块数
+    uint32_t    avail;      // 剩余块数
+
+    /// 构造内存池并预分配 block_cnt 个块
+    MemPool(uint32_t block_cnt) noexcept
+        : mem(nullptr), free_list(nullptr), total(block_cnt), avail(block_cnt)
+    {
+        if (block_cnt == 0) return;
+        // 一次性分配连续内存
+        size_t bytes = sizeof(Block) * block_cnt;
+        Block* raw = static_cast<Block*>(::malloc(bytes));
+        assert(raw != nullptr && "MemPool: allocation failed");
+        mem = Ptr<Block>(raw);
+
+        // 构建空闲链表
+        free_list = raw;
+        for (uint32_t i = 0; i < block_cnt - 1; ++i) {
+            raw[i].next = &raw[i + 1];
+        }
+        raw[block_cnt - 1].next = nullptr;
+    }
+
+    /// 析构释放内存
+    ~MemPool() noexcept {
+        if (!mem.is_null()) {
+            ::free(mem.get());
+        }
+    }
+
+    /// 禁止拷贝
+    MemPool(const MemPool&) = delete;
+    MemPool& operator=(const MemPool&) = delete;
+
+    /// 获取一个空闲块，返回指向该块中 T 类型对象的指针
+    auto acquire() noexcept -> Ptr<T> {
+        if (avail == 0) {
+            assert(false && "MemPool: no free blocks");
+            return Ptr<T>(nullptr);
+        }
+        Block* blk = free_list;
+        free_list = blk->next;
+        --avail;
+
+        // 在已分配内存上构造默认对象（平凡类型无操作）
+        T* obj = reinterpret_cast<T*>(blk->storage);
+        // 这里假设 T 是平凡类型，不需要调用构造函数
+        return Ptr<T>(obj);
+    }
+
+    /// 释放由 acquire 分配的块
+    auto release(Ptr<T> obj) noexcept -> void {
+        if (obj.is_null()) return;
+        // 从对象指针回退到 Block 首地址（标准布局保证）
+        Block* blk = reinterpret_cast<Block*>(reinterpret_cast<uint8_t*>(obj.get()) - offsetof(Block, storage));
+        blk->next = free_list;
+        free_list = blk;
+        ++avail;
+    }
+
+    /// 剩余可用块数
+    auto remaining() const noexcept -> uint32_t {
+        return avail;
+    }
+};
+
+
+// ===-----------------------
+//
+// 开放寻址哈希表
+// Key 固定为 Str 切片（不拷贝键数据，要求键生命周期覆盖使用期）
+// Value 为模板参数 ValueT
+//
+template <typename ValueT>
+struct HashMap {
+    enum class SlotState : uint8_t {
+        Empty,
+        Occupied,
+        Deleted
+    };
+
+    struct Slot {
+        Str       key;
+        ValueT    value;
+        SlotState state;
+    };
+
+    Vec<Slot>  slots;
+    uint32_t   count;       // 实际元素数量
+    uint32_t   limit;       // 扩容阈值 (capacity * 0.7)
+
+    /// 初始构造
+    HashMap() noexcept : slots(), count(0), limit(0) {
+        _init_slots(8);
+    }
+
+    /// 禁止拷贝
+    HashMap(const HashMap&) = delete;
+    HashMap& operator=(const HashMap&) = delete;
+
+    /// 查找键，返回指向值的指针（找不到返回空 Option）
+    auto find(const Str& key) noexcept -> Option<Ptr<ValueT>> {
+        const uint32_t cap = slots.capacity();
+        if (cap == 0) return Option<Ptr<ValueT>>::none();
+
+        uint64_t h = key.hash();
+        uint32_t idx = static_cast<uint32_t>(h % cap);
+
+        for (uint32_t i = 0; i < cap; ++i) {
+            Slot& s = slots[idx];
+            if (s.state == SlotState::Empty) {
+                return Option<Ptr<ValueT>>::none();
+            }
+            if (s.state == SlotState::Occupied && s.key == key) {
+                return Option<Ptr<ValueT>>::some(Ptr<ValueT>(&s.value));
+            }
+            // 线性探测
+            idx = (idx + 1) % cap;
+        }
+        return Option<Ptr<ValueT>>::none();
+    }
+
+    /// 插入键值对，若键已存在则覆盖并返回旧值，否则插入并返回 none
+    auto insert(const Str& key, const ValueT& value) noexcept -> Option<ValueT> {
+        if (count >= limit) _resize(capacity() * 2);
+
+        uint32_t cap = slots.capacity();
+        uint64_t h = key.hash();
+        uint32_t idx = static_cast<uint32_t>(h % cap);
+
+        // 查找插入位置或重复键
+        int32_t first_deleted = -1;
+        for (uint32_t i = 0; i < cap; ++i) {
+            Slot& s = slots[idx];
+            if (s.state == SlotState::Empty) {
+                // 优先使用删除位
+                if (first_deleted >= 0) idx = static_cast<uint32_t>(first_deleted);
+                Slot& target = slots[idx];
+                target.key = key;
+                target.value = value;
+                target.state = SlotState::Occupied;
+                ++count;
+                return Option<ValueT>::none();
+            }
+            if (s.state == SlotState::Deleted) {
+                if (first_deleted < 0) first_deleted = static_cast<int32_t>(idx);
+            }
+            else if (s.state == SlotState::Occupied && s.key == key) {
+                // 键已存在，覆盖
+                ValueT old = s.value;
+                s.value = value;
+                return Option<ValueT>::some(old);
+            }
+            idx = (idx + 1) % cap;
+        }
+
+        // 表满或逻辑错误
+        assert(false && "HashMap: insert failed (table full?)");
+        return Option<ValueT>::none();
+    }
+
+    /// 移除键，成功返回 true
+    auto erase(const Str& key) noexcept -> bool {
+        uint32_t cap = slots.capacity();
+        if (cap == 0) return false;
+
+        uint64_t h = key.hash();
+        uint32_t idx = static_cast<uint32_t>(h % cap);
+
+        for (uint32_t i = 0; i < cap; ++i) {
+            Slot& s = slots[idx];
+            if (s.state == SlotState::Empty) {
+                return false;
+            }
+            if (s.state == SlotState::Occupied && s.key == key) {
+                s.state = SlotState::Deleted;
+                --count;
+                return true;
+            }
+            idx = (idx + 1) % cap;
+        }
+        return false;
+    }
+
+    /// 清空哈希表
+    auto clear() noexcept -> void {
+        _init_slots(8);
+        count = 0;
+        limit = static_cast<uint32_t>(8 * 0.7);
+    }
+
+    /// 元素数量
+    auto size() const noexcept -> uint32_t { return count; }
+
+    /// 当前容量
+    auto capacity() const noexcept -> uint32_t { return slots.capacity(); }
+
+private:
+    // 初始化槽位数组
+    auto _init_slots(uint32_t cap) noexcept -> void {
+        slots = Vec<Slot>();
+        slots.reserve(cap);
+        for (uint32_t i = 0; i < cap; ++i) {
+            Slot s{};
+            s.state = SlotState::Empty;
+            slots.push_back(s);
+        }
+    }
+
+    // 重新哈希扩容
+    auto _resize(uint32_t new_cap) noexcept -> void {
+        if (new_cap < 8) new_cap = 8;
+        // 备份旧数据
+        Vec<Slot> old_slots = ::move(slots);
+        uint32_t old_cap = old_slots.capacity();
+
+        // 初始化新槽位
+        _init_slots(new_cap);
+        limit = static_cast<uint32_t>(new_cap * 0.7);
+
+        // 重新插入旧元素
+        for (uint32_t i = 0; i < old_cap; ++i) {
+            Slot& old = old_slots[i];
+            if (old.state == SlotState::Occupied) {
+                // 直接插入（不检查重复，因为旧表无重复）
+                uint64_t h = old.key.hash();
+                uint32_t idx = static_cast<uint32_t>(h % new_cap);
+                while (slots[idx].state == SlotState::Occupied) {
+                    idx = (idx + 1) % new_cap;
+                }
+                slots[idx] = old;
+                ++count;  // 注意 count 已在 _init_slots 中隐含重置为0
+            }
+        }
+        // old_slots 析构释放内存
+    }
+};
+
+
+// ===-----------------------
+//
+// 全局工具函数
+//
+// ===-----------------------
+
+/// 左值转右值
+template <typename T>
+constexpr auto move(T&& obj) noexcept -> T&& {
+    return static_cast<T&&>(obj);
+}
+
+/// 完美转发
+template <typename T>
+constexpr auto forward(T&& obj) noexcept -> T&& {
+    return static_cast<T&&>(obj);
+}
+
+/// 按元素个数拷贝内存（内部使用 memmove）
+template <typename T>
+auto memcpy(Ptr<T> dst, const Ptr<T> src, size_t count) noexcept -> void {
+    if (count == 0) return;
+    ::memmove(dst.get(), src.get(), count * sizeof(T));
+}
+
+/// 分配堆内存（失败直接 abort）
+template <typename T>
+auto alloc(size_t count) noexcept -> Ptr<T> {
+    void* p = ::malloc(sizeof(T) * count);
+    if ($Unlikely(p == nullptr)) {
+        ::abort();
+    }
+    return Ptr<T>(static_cast<T*>(p));
+}
+
+/// 安全版内存分配（失败返回空 Option）
+template <typename T>
+auto alloc_or(size_t count) noexcept -> Option<Ptr<T>> {
+    void* p = ::malloc(sizeof(T) * count);
+    if (p == nullptr) {
+        return Option<Ptr<T>>::none();
+    }
+    return Option<Ptr<T>>::some(Ptr<T>(static_cast<T*>(p)));
+}
+
+/// 调整已分配内存大小（失败 abort）
+template <typename T>
+auto realloc(Ptr<T> obj, size_t count) noexcept -> Ptr<T> {
+    void* p = ::realloc(obj.get(), sizeof(T) * count);
+    if ($Unlikely(p == nullptr)) {
+        ::abort();
+    }
+    return Ptr<T>(static_cast<T*>(p));
+}
+
+/// 安全版内存重分配（失败返回空 Option，原内存保持有效）
+template <typename T>
+auto realloc_or(Ptr<T> obj, size_t count) noexcept -> Option<Ptr<T>> {
+    void* p = ::realloc(obj.get(), sizeof(T) * count);
+    if (p == nullptr) {
+        return Option<Ptr<T>>::none();
+    }
+    return Option<Ptr<T>>::some(Ptr<T>(static_cast<T*>(p)));
+}
+
+/// 释放动态内存
+template <typename T>
+auto free(Ptr<T> obj) noexcept -> void {
+    if (!obj.is_null()) {
+        ::free(obj.get());
+    }
+}
+
+/// 输出 Str 并换行
+inline auto println(Str text) noexcept -> void {
+    if (text.len > 0) {
+        ::fwrite(text.ptr.get(), 1, text.len, stdout);
+    }
+    ::fputc('\n', stdout);
+}
+
+/// 输出 MutStr 并换行
+inline auto println(const MutStr& text) noexcept -> void {
+    println(text.as_str());
+}
+
+/// 输出 Str（不追加换行）
+inline auto print(Str text) noexcept -> void {
+    if (text.len > 0) {
+        ::fwrite(text.ptr.get(), 1, text.len, stdout);
+    }
+}
+
+/// 输出 MutStr（不追加换行）
+inline auto print(const MutStr& text) noexcept -> void {
+    print(text.as_str());
+}
+
+/// 刷新标准输出缓冲区
+inline auto shellflush() noexcept -> void {
+    ::fflush(stdout);
+}
+
+/// 标准化文件路径（使用内部静态缓冲区，非线程安全）
+inline auto pathnormalize(Str path) noexcept -> Str {
+    static char buf[4096];  // 临时缓冲区
+    uint32_t j = 0;
+    bool is_abs = is_abspath(path);
+
+    // 平台分隔符
+    const char sep = 
+#if $IsWindows
+        '\\';
+#else
+        '/';
+#endif
+
+    // 简化实现：去除重复分隔符，处理 '.' 和 '..'（基础）
+    for (uint32_t i = 0; i < path.len; ++i) {
+        uint8_t c = path[i];
+        if (c == '/' || c == '\\') {
+            // 统一为平台分隔符
+            if (j > 0 && buf[j-1] != sep) {
+                buf[j++] = sep;
+            }
+        } else if (c == '.' && (i+1 < path.len && (path[i+1] == '/' || path[i+1] == '\\' || i+1 == path.len))) {
+            // 跳过 '.' 自身
+            continue;
+        } else if (c == '.' && i+1 < path.len && path[i+1] == '.' && 
+                   (i+2 == path.len || path[i+2] == '/' || path[i+2] == '\\')) {
+            // ".." 回退一级
+            if (j > 0 && buf[j-1] == sep) --j; // 去掉末尾分隔符
+            while (j > 0 && buf[j-1] != sep) --j; // 去掉上一级目录
+            i += 2;
+        } else {
+            buf[j++] = static_cast<char>(c);
+        }
+    }
+    if (j == 0) {
+        buf[0] = is_abs ? sep : '.';
+        j = 1;
+    }
+    buf[j] = '\0';
+    return Str(reinterpret_cast<uint8_t*>(buf), j);
+}
+
+/// 拼接路径，至少需要一个参数
+/// 示例: pathcat(mut_path, "dir", "file.txt");
+inline auto pathcat(MutStr& path, Str part) noexcept -> void {
+    // 追加一个路径片段
+    if (part.is_empty()) return;
+    char sep =
+#if $IsWindows
+        '\\';
+#else
+        '/';
+#endif
+    // 如果 path 非空且末尾不是分隔符，则添加分隔符
+    if (path.size() > 0 && path[path.size()-1] != static_cast<uint8_t>(sep) &&
+        path[path.size()-1] != '/')
+    {
+        path.push_back(static_cast<uint8_t>(sep));
+    }
+    // 跳过 part 开头的分隔符
+    uint32_t start = 0;
+    while (start < part.len && (part[start] == '/' || part[start] == '\\')) ++start;
+    path.append(part.substr(start, part.len - start));
+}
+
+/// 可变参数版路径拼接
+template <typename... Args>
+auto pathcat(MutStr& path, Str first, Args&&... rest) noexcept -> void {
+    pathcat(path, first);
+    pathcat(path, static_cast<Str>(rest)...);
+}
+
+/// 从完整路径提取文件名
+inline auto base_filename(Str path) noexcept -> Str {
+    if (path.is_empty()) return path;
+    const uint8_t* data = path.ptr.get();
+    uint32_t len = path.len;
+
+    // 查找最后一个分隔符
+    int32_t last_sep = -1;
+    for (uint32_t i = 0; i < len; ++i) {
+        if (data[i] == '/' || data[i] == '\\') {
+            last_sep = static_cast<int32_t>(i);
+        }
+    }
+    if (last_sep < 0) return path;  // 没有目录部分，整个就是文件名
+    uint32_t start = static_cast<uint32_t>(last_sep + 1);
+    if (start >= len) return Str();  // 以分隔符结尾，无文件名
+    return Str(path.ptr + start, len - start);
+}
+
+/// 判断是否为绝对路径
+inline auto is_abspath(Str path) noexcept -> bool {
+    if (path.is_empty()) return false;
+#if $IsWindows
+    // Windows: 盘符形式 C: 或 \\ 开头
+    if (path.len >= 2 && path[1] == ':') return true;
+    if (path[0] == '\\' && path.len >= 2 && path[1] == '\\') return true;
+    return false;
+#else
+    return path[0] == '/';
+#endif
+}
+
+/// 读取文件内容到可变字符串 out 中，返回错误码
+inline auto readfile(Str path, MutStr& out) noexcept -> KstdIOError {
+    // 使用 C 文件 API
+#if $IsWindows
+    // Windows 需要处理宽字符，这里简单使用 fopen (可能仅支持 ASCII 路径)
+    FILE* f = ::fopen(path.c_str(), "rb");
+#else
+    FILE* f = ::fopen(path.c_str(), "rb");
+#endif
+    if (f == nullptr) {
+        // 根据 errno 简单分类
+        if (errno == ENOENT) return KstdIOError::FileNotFound;
+        if (errno == EACCES || errno == EPERM) return KstdIOError::AccessDenied;
+        return KstdIOError::Unknown;
+    }
+
+    // 获取文件大小
+    ::fseek(f, 0, SEEK_END);
+    long fsize = ::ftell(f);
+    ::fseek(f, 0, SEEK_SET);
+
+    if (fsize < 0) {
+        ::fclose(f);
+        return KstdIOError::ReadError;
+    }
+
+    out.clear();
+    out._buf.reserve(static_cast<uint32_t>(fsize + 1));
+
+    // 逐块读取
+    char buf[4096];
+    size_t bytes_read;
+    while ((bytes_read = ::fread(buf, 1, sizeof(buf), f)) > 0) {
+        out.append(Str(reinterpret_cast<uint8_t*>(buf), static_cast<uint32_t>(bytes_read)));
+    }
+
+    if (::ferror(f)) {
+        ::fclose(f);
+        return KstdIOError::ReadError;
+    }
+    ::fclose(f);
+    return KstdIOError::None;
+}
+
+/// 将字符串写入文件（覆盖模式）
+inline auto writefile(Str path, Str text) noexcept -> KstdIOError {
+    FILE* f = ::fopen(path.c_str(), "wb");
+    if (f == nullptr) {
+        if (errno == EACCES || errno == EPERM) return KstdIOError::AccessDenied;
+        return KstdIOError::WriteError;
+    }
+    if (text.len > 0) {
+        size_t written = ::fwrite(text.ptr.get(), 1, text.len, f);
+        if (written != text.len) {
+            ::fclose(f);
+            return KstdIOError::WriteError;
+        }
+    }
+    ::fclose(f);
+    return KstdIOError::None;
+}
+
+// ===-----------------------
+//
+// 枚举名称提取（纯编译期实现，仅依赖 C 库）
+//
+// ===-----------------------
+
+namespace detail {
+
+// 编译期字符串工具
+constexpr size_t cstr_len(const char* s) noexcept {
+    size_t i = 0;
+    while (s[i] != '\0') ++i;
+    return i;
+}
+
+constexpr const char* cstr_find(const char* s, char c) noexcept {
+    while (*s != '\0') {
+        if (*s == c) return s;
+        ++s;
+    }
+    return nullptr;
+}
+
+constexpr const char* cstr_find_str(const char* haystack, const char* needle) noexcept {
+    size_t needle_len = cstr_len(needle);
+    if (needle_len == 0) return haystack;
+    while (*haystack != '\0') {
+        bool found = true;
+        for (size_t i = 0; i < needle_len; ++i) {
+            if (haystack[i] != needle[i]) {
+                found = false;
+                break;
+            }
+        }
+        if (found) return haystack;
+        ++haystack;
+    }
+    return nullptr;
+}
+
+// 从编译器签名提取单个枚举值名称
+template <auto V>
+constexpr auto enum_item_name() noexcept -> Str {
+    constexpr auto sig = [] {
+#if defined(__clang__) || defined(__GNUC__)
+        return __PRETTY_FUNCTION__;
+#else
+        return __FUNCSIG__;
+#endif
+    }();
+
+    constexpr const char* start = nullptr;
+    constexpr const char* end   = nullptr;
+
+    // GCC / Clang 签名示例：
+    //   "constexpr auto kstd::detail::enum_item_name() [with auto V = Color::Red]"
+    if constexpr (constexpr auto v_eq = cstr_find_str(sig, "V = "); v_eq != nullptr) {
+        start = v_eq + 4;                     // 跳过 "V = "
+        end   = cstr_find(start, ']');
+    }
+    // MSVC 签名示例：
+    //   "auto __cdecl kstd::detail::enum_item_name<Color::Red>(void)"
+    else {
+        constexpr size_t len = cstr_len(sig);
+        constexpr const char* ptr = sig + len;
+        while (ptr != sig) {
+            --ptr;
+            if (*ptr == '<') {
+                start = ptr + 1;
+                end   = cstr_find(start, '>');
+                break;
+            }
+        }
+        // 跳过可能的 "enum " 前缀
+        if constexpr (start != nullptr && end != nullptr && start < end) {
+            constexpr const char* enum_kw = "enum ";
+            if constexpr (cstr_find_str(start, enum_kw) == start) {
+                start += 5;
+            }
+        }
+    }
+
+    if constexpr (start != nullptr && end != nullptr && start < end) {
+        // 去除命名空间/类作用域，只保留最后的标识符
+        constexpr const char* name_start = start;
+        constexpr const char* last_colon = nullptr;
+        for (const char* p = start; p < end - 1; ++p) {
+            if (p[0] == ':' && p[1] == ':') {
+                last_colon = p;
+            }
+        }
+        if constexpr (last_colon != nullptr) {
+            name_start = last_colon + 2;      // 跳过 "::"
+        }
+
+        constexpr size_t name_len = end - name_start;
+        // 合法性检查：标识符以字母或下划线开头
+        if constexpr (name_len > 0 && (
+            (name_start[0] >= 'a' && name_start[0] <= 'z') ||
+            (name_start[0] >= 'A' && name_start[0] <= 'Z') ||
+            name_start[0] == '_'))
+        {
+            return Str(
+                Ptr<uint8_t>(const_cast<uint8_t*>(
+                    reinterpret_cast<const uint8_t*>(name_start))),
+                static_cast<uint32_t>(name_len));
+        }
+    }
+    return Str();   // 解析失败或非法值
+}
+
+// 序列生成
+template <int... Is>
+struct Seq {};
+
+template <int N, int... Is>
+struct GenSeqImpl : GenSeqImpl<N - 1, N - 1, Is...> {};
+
+template <int... Is>
+struct GenSeqImpl<0, Is...> {
+    using type = Seq<Is...>;
+};
+
+template <int N>
+using GenSeq = typename GenSeqImpl<N>::type;
+
+// ---------- 生成 129 个枚举名称的静态数组 ----------
+template <typename T, T V>
+constexpr auto get_enum_name() noexcept -> Str {
+    return enum_item_name<V>();
+}
+
+template <typename T, int... Is>
+constexpr const Str (&make_names_array(Seq<Is...>))[sizeof...(Is)] {
+    static constexpr Str arr[sizeof...(Is)] = {
+        get_enum_name<T, static_cast<T>(Is)>()... };
+    return arr;
+}
+
+template <typename T>
+constexpr const Str (&get_enum_names())[129] {
+    return make_names_array<T>(GenSeq<129>{});
+}
+
+} // namespace detail
+
+// 
+// 将枚举项转为字符串（0~128 连续 enum class）
+// 
+template <typename T>
+inline auto enumeration_name(T enum_item) noexcept -> Str {
+    constexpr const Str (&names)[129] = detail::get_enum_names<T>();
+
+    // 直接转为 int 索引
+    int idx = static_cast<int>(enum_item);
+    if (idx >= 0 && idx <= 128) {
+        return names[idx];
+    }
+    return Str();
+}
+
+
 } // namespace kstd
 
+// ===-----------------------
+//
+// 清理所有 $ 前缀宏
+//
+// ===-----------------------
 #if $NoMacro
 #   undef $ForeachVec
 #   undef $Likely
