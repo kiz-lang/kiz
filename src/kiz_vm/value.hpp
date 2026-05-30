@@ -3,8 +3,12 @@
 struct Object;
 
 enum class ValueKind: uint8_t {
-    Int, Decimal, ObjectPtr, 
-    FunctionPtr, String,
+    Int,
+    Decimal,
+    String,
+    ObjectPtr,
+    GenericObjectPtr,
+    FunctionPtr,
 };
 
 struct Value {
