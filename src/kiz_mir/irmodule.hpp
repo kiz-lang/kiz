@@ -25,39 +25,6 @@ struct CType {
     bool is_volatile;
 };
 
-
-struct StructItemInfo {
-    Str name;
-    uint32_t tyid;
-};
-
-enum class TypeKind: uint8_t {
-    Int,
-    Decimal,
-    Array,
-    Struct,
-    SumType,
-    Alias,
-    Tuple,
-    CType,
-};
-
-struct Type {
-    union {
-        uint32_t case_array_count;
-        uint32_t case_alias_ref;
-        Vec<StructItemInfo> case_struct_info;
-        Vec<uint32_t> case_sumtypes;
-        Vec<uint32_t case_tuple;
-        CType case_ctype;
-    } typeinfo;
-
-    Str tyname;
-    TypeKind typekind;
-    uint32_t tyid;
-};
-
-
 struct FFIMetaData {
     Vec<uint32_t> params;
     Vec<Str> param_names;
