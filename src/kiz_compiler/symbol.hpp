@@ -21,11 +21,42 @@ struct FunctionSymbol {
 };
 
 struct AbstractSymbol {
+    Vec<uint32_t> impl_abstracts;
     Vec<FunctionSymbol> function_symbols;
 };
 
-struct TypeSymbol {
-    
+struct StructItemInfo {
+    Str name;
+    uint32_t tyid;
+};
+
+enum class TypeKind: uint8_t {
+    Int,
+    Decimal,
+    Array,
+    Struct,
+    SumType,
+    Alias,
+    Tuple,
+    CType,
+    Opaque,
+};
+
+struct Type {
+    Vec<uint32_t> impl_abstracts;
+    union {
+        uint32_t case_array_count;
+        uint32_t case_alias_ref;
+        Vec<StructItemInfo> case_struct_info;
+        Vec<uint32_t> case_sumtypes;
+        Vec<uint32_t case_tuple;
+        CType case_ctype;
+    } typeinfo;
+
+    Str tyname;
+
+    TypeKind typekind;
+    uint32_t tyid;
 };
 
 struct TypeVar {
@@ -34,9 +65,7 @@ struct TypeVar {
 
 struct SymbolTable {
     Vec<Symbol> symbols;
-    Vec<FunctionSymbol> function_symbols;
-    Vec<AbstractSymbol> abstract_symbols;
-    Vec<TypeSymbol> type_symbols;
+
     Vec<TypeVar> type_vars;
     bool is_loop: 1;
     bool loop_head_block: 1;
