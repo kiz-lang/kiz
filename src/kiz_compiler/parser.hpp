@@ -29,10 +29,10 @@ class Parser {
     auto lookup_fn(Str name) -> uint32_t;
     auto lookup_type(Str name) -> uint32_t;
     auto lookup_abstract(Str name) -> uint32_t;
-    auto lookup_field(uint32_t typeid) -> uint32_t;
-    auto lookup_method(uint32_t typeid) -> uint32_t;
+    auto lookup_field(uint32_t tyid) -> uint32_t;
+    auto lookup_method(uint32_t tyid) -> uint32_t;
 
-    auto check_call(Symbol fn, Vec<uint32_t> argv) -> bool;
+    auto check_call(uint32_t fn, Vec<uint32_t> argv) -> bool;
     auto analyze_binary(Type l, Type r) -> Result<Type, ComptimeError>;
     auto analyze_unary(Type l, Type r) -> Result<Type, ParserError>;
 
