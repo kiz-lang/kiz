@@ -3,28 +3,42 @@
 namespace kizc {
 
 enum class TokenKind: uint8_t {
-    OpAdd, OpSub, OpMul, OpDiv, OpMod, OpEq,
-    OpNe, OpGt, OpLt, OpLe, OpGe,
-    KwAnd, KwOr, KwNot, 
+    OpAdd, OpSub, OpMul, OpDiv, OpMod,
+    OpEq, OpNe, OpGt, OpLt, OpLe, OpGe,
+    OpBitAnd, OpBitOr, OpBitXor, OpNotBit, OpBitLShift, OpBitRShift,
+
+    OpLogicAnd, OpLogicOr, OpLogicNot, 
     KwIf, KwElif, KwElse,
-    KwWhile, KwLoop, 
-    KwBreak, KwReturn, KwNext,
-    KwType, KwWith, KwImpl, KwAbstract,
+    KwWhile, KwLoop, KwFor, KwIn,
+    KwBreak, KwReturn, KwContinue,
+    KwType, KwError, KwExternal,
+    KwImpl, KwAbstract,
     KwMove, KwRef, KwMutRef, KwClone,
-    kwLet, KwPub, KwUse, KwMod,
-    KwFun, KwTry, KwWhen,
-    At, LParen, RParen, LBrace, RBrace, LBracket, RBracket,
-    Comma, Semi, Colon, Dot, FatArrow, ThinArrow, Assign,
-    Ident, String, Int, Decimal, Eof, Invaild
+    KwLet, KwFun, KwGlobal, KwFinal,
+    KwWhen, KwBindto,
+    KwTry, KwOn, KwEffect, KwResume,
+
+    At, Question, Hash,
+    LParen, RParen, 
+    LBrace, RBrace, 
+    LBracket, RBracket,
+    Comma, Semi, Colon, Dot, 
+    FatArrow, ThinArrow, 
+    Assign, Pipe, Ellipsis,
+
+    Ident, String, Int, Decimal, 
+
+    Eof, Invalid,
 };
 
 struct Token {
-    TokenKind tokenkind;
-    Str text;
     Span span;
+    Str text;
+    TokenKind tokenkind;
 };
 
 class Lexer {
+    FileMetaData file_;
     Str text_;
     uint32_t pos_;
     uint32_t lineno_;
