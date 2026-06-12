@@ -18,7 +18,7 @@ Object* str_call(Object* self, const List* args) {
 // String.__bool__
 Object* str_bool(Object* self, const List* args) {
     const auto self_int = dynamic_cast<String*>(self);
-    if (self_int->val.empty()) load_false();
+    if (self_int->val.empty()) return load_false();
     return load_true();
 }
 
